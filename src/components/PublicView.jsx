@@ -223,9 +223,9 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-30 bg-navy/90 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div>
-            <span className="font-serif text-xl text-primary font-bold">YUPP-Juvy Espina</span>
-            <span className="hidden sm:inline text-muted text-xs ml-2">Your Premier Property Partner</span>
+          <div className="flex items-center gap-3">
+            <img src="/Logo.png" alt="Logo" className="h-9 w-auto object-contain" />
+            <span className="hidden sm:inline text-muted text-xs">Your Premier Property Partner</span>
           </div>
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6 text-sm text-muted">
@@ -314,15 +314,15 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
             <div>
-              <h3 className="font-serif text-xl text-primary font-bold mb-2">YUPP</h3>
-              <p className="text-muted text-sm leading-relaxed">Your premier property partner in Bohol. Connecting buyers and sellers with exceptional real estate.</p>
+              <img src="/Logo.png" alt="Logo" className="h-10 w-auto object-contain mb-2" />
+              <p className="text-muted text-sm leading-relaxed">Your premier property partner. Connecting buyers and sellers with exceptional real estate.</p>
             </div>
             <div>
               <h4 className="text-primary font-semibold text-sm mb-3">Contact</h4>
               <div className="flex flex-col gap-2 text-muted text-sm">
-                <span>Juvy Espina</span>
+                <span>Juvy C. Espina</span>
                 <a href="tel:+639123456789" className="hover:text-gold transition-colors">+63 912 345 6789</a>
-                <a href="mailto:maria@luxerealty.com" className="hover:text-gold transition-colors">maria@luxerealty.com</a>
+                <a href="mailto:juvy@luxerealty.com" className="hover:text-gold transition-colors">juvy@luxerealty.com</a>
               </div>
             </div>
             <div>

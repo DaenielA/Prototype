@@ -16,7 +16,7 @@ export const SEED_LISTINGS = [
     description: 'A beautiful modern house nestled in the heart of Cebu City. Features open-plan living, premium finishes, and a landscaped garden.',
     amenities: ['Swimming Pool', 'Gym', '24/7 Security', 'CCTV'],
     images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80', 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'],
-    agentName: 'Maria Santos', agentPhone: '+63 912 345 6789', agentEmail: 'maria@luxerealty.com',
+    agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
     visible: true, views: 84,
   },
   {
@@ -28,7 +28,7 @@ export const SEED_LISTINGS = [
     description: 'Stylish high-rise condo unit with stunning city views. Fully furnished with modern appliances. Ideal for young professionals and investors.',
     amenities: ['Rooftop Pool', 'Fitness Center', 'Concierge', 'Sky Lounge'],
     images: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80'],
-    agentName: 'Maria Santos', agentPhone: '+63 912 345 6789', agentEmail: 'maria@luxerealty.com',
+    agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
     visible: true, views: 61,
   },
   {
@@ -40,7 +40,7 @@ export const SEED_LISTINGS = [
     description: 'Grand house and lot in a prestigious subdivision in Talisay. Expansive living spaces, high ceilings, and a large garden perfect for family living.',
     amenities: ['Clubhouse', 'Basketball Court', 'Jogging Path', '24/7 Security', 'Playground'],
     images: ['https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80', 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80'],
-    agentName: 'Maria Santos', agentPhone: '+63 912 345 6789', agentEmail: 'maria@luxerealty.com',
+    agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
     visible: true, views: 112,
   },
   {
@@ -52,7 +52,7 @@ export const SEED_LISTINGS = [
     description: 'Premium commercial space in the heart of Cebu IT Park. High foot traffic, surrounded by BPO companies, restaurants, and hotels.',
     amenities: ['24/7 Access', 'CCTV', 'Backup Power', 'High-Speed Internet Ready'],
     images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80'],
-    agentName: 'Maria Santos', agentPhone: '+63 912 345 6789', agentEmail: 'maria@luxerealty.com',
+    agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
     visible: true, views: 47,
   },
   {
@@ -64,7 +64,7 @@ export const SEED_LISTINGS = [
     description: 'Clean titled residential lot in a gated community near Mactan-Cebu International Airport. Perfect for building your dream home.',
     amenities: ['Gated Community', 'Concrete Roads', 'Underground Utilities'],
     images: ['https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80'],
-    agentName: 'Maria Santos', agentPhone: '+63 912 345 6789', agentEmail: 'maria@luxerealty.com',
+    agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
     visible: true, views: 29,
   },
 ];

@@ -9,7 +9,7 @@ const EMPTY_FORM = {
   title: '', type: 'House', status: 'For Sale', price: '', location: '', address: '',
   bedrooms: '', bathrooms: '', floorArea: '', lotArea: '', parking: '', furnishing: 'Bare',
   yearBuilt: '', description: '', amenities: [], images: [],
-  agentName: 'Maria Santos', agentPhone: '+63 912 345 6789', agentEmail: 'maria@luxerealty.com',
+  agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
   visible: true,
 };
 
@@ -312,14 +312,16 @@ export default function AdminDashboard({ listings, setListings, onLogout, addToa
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-60 bg-card border-r border-white/10 flex flex-col transition-transform duration-300
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-        <div className="p-6 border-b border-white/10">
-          <h1 className="font-serif text-xl text-primary font-bold">LuxeRealty</h1>
-          <p className="text-muted text-xs mt-1">Admin Portal</p>
+        <div className="p-4 border-b border-white/10 flex items-center gap-3">
+          <img src="/Logo.png" alt="Logo" className="h-8 w-auto object-contain" />
+          <div>
+            <p className="text-muted text-xs">Admin Portal</p>
+          </div>
         </div>
         <div className="p-4 border-b border-white/10 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gold/20 border border-gold/30 flex items-center justify-center text-gold font-bold text-sm">M</div>
+          <img src="/Juvy.jpg" alt="Juvy C. Espina" className="w-9 h-9 rounded-full object-cover border-2 border-gold/40" />
           <div>
-            <p className="text-primary text-sm font-semibold">Maria Santos</p>
+            <p className="text-primary text-sm font-semibold">Juvy C. Espina</p>
             <p className="text-muted text-xs">Agent</p>
           </div>
         </div>
