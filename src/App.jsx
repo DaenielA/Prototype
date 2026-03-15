@@ -11,8 +11,7 @@ export default function App() {
   const [listings, setListings] = useState([]);
   const [view, setView] = useState('public');
   const [toasts, setToasts] = useState([]);
-  const [authReady, setAuthReady] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
 
   const addToast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -23,36 +22,40 @@ export default function App() {
     setToasts(t => t.filter(x => x.id !== id));
   }, []);
 
-  async function loadListings() {
+  const loadListings = useCallback(async () => {
     try {
       await seedIfEmpty();
       const data = await fetchListings();
       setListings(data);
     } catch (e) {
+      console.error('Listings error:', e);
       addToast('Failed to load listings.', 'error');
-    } finally {
-      setLoading(false);
     }
-  }
+  }, [addToast]);
 
   useEffect(() => {
+    // Auth listener — resolves quickly, just checks session
     const unsub = onAuthStateChanged(auth, (user) => {
-      setAuthReady(true);
       if (user) setView('admin');
+      setReady(true);
     });
-    return unsub;
+
+    // Safety timeout — if Firebase auth hangs for 5s, show the app anyway
+    const timeout = setTimeout(() => setReady(true), 5000);
+
+    return () => { unsub(); clearTimeout(timeout); };
   }, []);
 
   useEffect(() => {
     loadListings();
-  }, []);
+  }, [loadListings]);
 
   async function handleLogout() {
     await signOut(auth);
     setView('public');
   }
 
-  if (!authReady || loading) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-navy flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
