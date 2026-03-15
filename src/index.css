@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-navy text-primary font-sans;
+  }
+  * {
+    @apply box-border;
+  }
+}
+
+@layer utilities {
+  .gold-border {
+    border-color: #c9a84c;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
