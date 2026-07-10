@@ -4,11 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        navy: '#0f1117',
-        card: '#1a1d27',
-        gold: '#c9a84c',
-        primary: '#f0ece4',
-        muted: '#7a7a8c',
+        navy: '#0F172A',
+        card: '#1F2937',
+        gold: '#C9A227',
+        primary: '#FFFFFF',
+        muted: '#94A3B8',
+        light: '#F8FAFC',
       },
       fontFamily: {
         serif: ['Playfair Display', 'serif'],

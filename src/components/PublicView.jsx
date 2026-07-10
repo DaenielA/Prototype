@@ -224,8 +224,8 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
       <nav className="fixed top-0 left-0 right-0 z-30 bg-navy/90 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/Logo.png" alt="Logo" className="h-9 w-auto object-contain" />
-            <span className="hidden sm:inline text-muted text-xs">Your Premier Property Partner</span>
+            <img src="/Logo.png" alt="Logo" className="h-14 w-14 object-contain rounded-full border-2 border-primary bg-white p-0.5" />
+            <span className="font-serif font-bold text-primary text-lg hidden sm:inline">Homes By Juvy</span>
           </div>
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6 text-sm text-muted">
@@ -243,9 +243,9 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
 
       {/* Hero */}
       <section id="home" className="relative pt-16 min-h-[90vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0f1117] via-[#1a1d27] to-[#0f1117]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-navy via-card to-navy" />
         <div className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+          style={{ backgroundImage: 'url(/Juvy.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
         <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/60 to-transparent" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 w-full">
@@ -314,14 +314,14 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
             <div>
-              <img src="/Logo.png" alt="Logo" className="h-10 w-auto object-contain mb-2" />
+              <img src="/Logo.png" alt="Logo" className="h-14 w-14 object-contain rounded-full border-2 border-primary bg-white p-0.5 mb-2" />
               <p className="text-muted text-sm leading-relaxed">Your premier property partner. Connecting buyers and sellers with exceptional real estate.</p>
             </div>
             <div>
               <h4 className="text-primary font-semibold text-sm mb-3">Contact</h4>
               <div className="flex flex-col gap-2 text-muted text-sm">
                 <span>Juvy C. Espina</span>
-                <a href="tel:+639123456789" className="hover:text-gold transition-colors">+63 912 345 6789</a>
+                <a href="tel:+639123456789" className="hover:text-gold transition-colors">+63175902973</a>
                 <a href="mailto:juvy@luxerealty.com" className="hover:text-gold transition-colors">juvy@luxerealty.com</a>
               </div>
             </div>
@@ -335,7 +335,7 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 text-center text-muted text-xs">
-            © {new Date().getFullYear()} YUPPRealty. All rights reserved.
+            © {new Date().getFullYear()} Homes By Juvy. All rights reserved.
           </div>
         </div>
       </footer>

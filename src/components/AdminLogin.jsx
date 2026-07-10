@@ -29,7 +29,8 @@ export default function AdminLogin({ onLogin, onBack, addToast }) {
     <div className="min-h-screen bg-navy flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img src="/Logo.png" alt="Logo" className="h-14 w-auto object-contain mx-auto mb-3" />
+          <img src="/Logo.png" alt="Logo" className="h-14 w-14 object-contain rounded-full border-2 border-primary bg-white p-0.5 mx-auto mb-3" />
+          <p className="font-serif font-bold text-primary text-xl">Homes By Juvy</p>
           <p className="text-muted text-sm">Agent Portal</p>
         </div>
 

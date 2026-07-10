@@ -106,6 +106,17 @@ export async function uploadImage(file) {
   return json.secure_url;
 }
 
+export async function uploadVideo(file) {
+  const url = `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/video/upload`;
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+  const res = await fetch(url, { method: 'POST', body: fd });
+  if (!res.ok) throw new Error('Video upload failed');
+  const json = await res.json();
+  return json.secure_url;
+}
+
 export function formatPrice(price, status) {
   const formatted = new Intl.NumberFormat('en-PH').format(price);
   return status === 'For Rent' ? `₱${formatted}/mo` : `₱${formatted}`;

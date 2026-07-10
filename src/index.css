@@ -13,7 +13,7 @@
 
 @layer utilities {
   .gold-border {
-    border-color: #c9a84c;
+    border-color: #C9A227;
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;

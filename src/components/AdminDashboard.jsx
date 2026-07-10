@@ -3,12 +3,12 @@ import {
   LayoutDashboard, List, PlusCircle, LogOut, Bell, Trash2, Pencil, Eye, EyeOff,
   TrendingUp, Home, Building2, Layers, X, Check, Menu, Upload
 } from 'lucide-react';
-import { formatPrice, addListing, updateListing, deleteListing, uploadImage } from '../data/seed';
+import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo } from '../data/seed';
 
 const EMPTY_FORM = {
   title: '', type: 'House', status: 'For Sale', price: '', location: '', address: '',
   bedrooms: '', bathrooms: '', floorArea: '', lotArea: '', parking: '', furnishing: 'Bare',
-  yearBuilt: '', description: '', amenities: [], images: [],
+  yearBuilt: '', description: '', amenities: [], images: [], videos: [],
   agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
   visible: true,
 };
@@ -43,9 +43,10 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
 }
 
 function PropertyForm({ initial, onSave, onCancel, addToast }) {
-  const [form, setForm] = useState(initial ? { ...initial, images: initial.images || [] } : EMPTY_FORM);
+  const [form, setForm] = useState(initial ? { ...initial, images: initial.images || [], videos: initial.videos || [] } : EMPTY_FORM);
   const [amenityInput, setAmenityInput] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
@@ -77,6 +78,24 @@ function PropertyForm({ initial, onSave, onCancel, addToast }) {
     setF('images', form.images.filter((_, idx) => idx !== i));
   }
 
+  async function handleVideoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const url = await uploadVideo(file);
+      setF('videos', [...(form.videos || []), url].slice(0, 3));
+    } catch {
+      addToast('Video upload failed. Try again.', 'error');
+    } finally {
+      setUploadingVideo(false);
+    }
+  }
+
+  function removeVideo(i) {
+    setF('videos', form.videos.filter((_, idx) => idx !== i));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const listing = {
@@ -89,6 +108,7 @@ function PropertyForm({ initial, onSave, onCancel, addToast }) {
       parking: Number(form.parking) || 0,
       yearBuilt: Number(form.yearBuilt) || 0,
       images: form.images.filter(Boolean),
+      videos: (form.videos || []).filter(Boolean),
       views: form.views || 0,
     };
     await onSave(listing);
@@ -203,8 +223,35 @@ function PropertyForm({ initial, onSave, onCancel, addToast }) {
           )}
         </div>
 
+        <div className="sm:col-span-2">
+          <label className={labelCls}>Property Videos (up to 3)</label>
+          <label className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-xl py-6 cursor-pointer transition-colors bg-navy/50 group
+            ${(form.videos || []).length >= 3 ? 'border-white/10 opacity-50 cursor-not-allowed' : 'border-white/20 hover:border-gold/50'}`}>
+            <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} disabled={(form.videos || []).length >= 3 || uploadingVideo} />
+            <div className="flex flex-col items-center gap-2 text-muted group-hover:text-primary transition-colors">
+              {uploadingVideo
+                ? <div className="w-7 h-7 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                : <Upload size={28} />}
+              <span className="text-sm font-medium">{uploadingVideo ? 'Uploading...' : 'Click to upload video'}</span>
+              <span className="text-xs">MP4, MOV, WEBM — {3 - (form.videos || []).length} slot{3 - (form.videos || []).length !== 1 ? 's' : ''} remaining</span>
+            </div>
+          </label>
+          {(form.videos || []).length > 0 && (
+            <div className="flex flex-col gap-2 mt-3">
+              {form.videos.map((vid, i) => (
+                <div key={i} className="flex items-center gap-3 bg-navy border border-white/10 rounded-xl px-4 py-2">
+                  <video src={vid} className="w-20 h-12 object-cover rounded-lg" />
+                  <span className="text-muted text-xs truncate flex-1">Video {i + 1}</span>
+                  <button type="button" onClick={() => removeVideo(i)} className="text-red-400 hover:text-red-300">
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div>
-          <label className={labelCls}>Agent Name</label>
           <input value={form.agentName} onChange={e => setF('agentName', e.target.value)} className={inputCls} />
         </div>
         <div>
@@ -313,15 +360,16 @@ export default function AdminDashboard({ listings, setListings, onLogout, addToa
       <aside className={`fixed inset-y-0 left-0 z-40 w-60 bg-card border-r border-white/10 flex flex-col transition-transform duration-300
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="p-4 border-b border-white/10 flex items-center gap-3">
-          <img src="/Logo.png" alt="Logo" className="h-8 w-auto object-contain" />
+          <img src="/Logo.png" alt="Logo" className="h-10 w-10 object-contain rounded-full border-2 border-primary bg-white p-0.5" />
           <div>
+            <p className="text-primary text-sm font-serif font-bold leading-tight">Homes By Juvy</p>
             <p className="text-muted text-xs">Admin Portal</p>
           </div>
         </div>
         <div className="p-4 border-b border-white/10 flex items-center gap-3">
           <img src="/Juvy.jpg" alt="Juvy C. Espina" className="w-9 h-9 rounded-full object-cover border-2 border-gold/40" />
           <div>
-            <p className="text-primary text-sm font-semibold">Juvy C. Espina</p>
+            <p className="text-primary text-sm font-semibold">Juvy E. Amolat</p>
             <p className="text-muted text-xs">Agent</p>
           </div>
         </div>
