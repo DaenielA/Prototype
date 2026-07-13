@@ -117,6 +117,22 @@ export async function uploadVideo(file) {
   return json.secure_url;
 }
 
+const INQ = 'inquiries';
+
+export async function addInquiry(data) {
+  await addDoc(collection(db, INQ), { ...data, read: false, createdAt: serverTimestamp() });
+}
+
+export async function fetchInquiries() {
+  const q = query(collection(db, INQ), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function markInquiryRead(id) {
+  await updateDoc(doc(db, INQ, id), { read: true });
+}
+
 export function formatPrice(price, status) {
   const formatted = new Intl.NumberFormat('en-PH').format(price);
   return status === 'For Rent' ? `₱${formatted}/mo` : `₱${formatted}`;

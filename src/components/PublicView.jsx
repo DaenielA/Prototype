@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Search, MapPin, Bed, Bath, Maximize2, X, ChevronLeft, ChevronRight, Phone, Mail, Send, Building2, Home, Layers } from 'lucide-react';
-import { formatPrice } from '../data/seed';
+import { formatPrice, addInquiry } from '../data/seed';
 
 const TYPE_ICON = { House: Home, Condo: Building2, 'House & Lot': Home, Commercial: Building2, 'Lot Only': Layers };
 
-function ImageWithFallback({ src, alt, type, className }) {
+function ImageWithFallback({ src, alt, type, className, onClick }) {
   const [err, setErr] = useState(false);
   const Icon = TYPE_ICON[type] || Home;
   if (err || !src) return (
@@ -13,7 +13,7 @@ function ImageWithFallback({ src, alt, type, className }) {
       <span className="text-xs">{type}</span>
     </div>
   );
-  return <img src={src} alt={alt} className={className} onError={() => setErr(true)} />;
+  return <img src={src} alt={alt} className={className} onClick={onClick} onError={() => setErr(true)} />;
 }
 
 function PropertyCard({ property, onClick }) {
@@ -52,15 +52,56 @@ function PropertyCard({ property, onClick }) {
   );
 }
 
+function LightBox({ images, startIdx, type, onClose }) {
+  const [idx, setIdx] = useState(startIdx);
+  function prev(e) { e.stopPropagation(); setIdx(i => (i - 1 + images.length) % images.length); }
+  function next(e) { e.stopPropagation(); setIdx(i => (i + 1) % images.length); }
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={onClose}>
+      <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><X size={28} /></button>
+      <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-3 transition-colors">
+        <ChevronLeft size={28} />
+      </button>
+      <img src={images[idx]} alt="" className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl" onClick={e => e.stopPropagation()} />
+      <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-3 transition-colors">
+        <ChevronRight size={28} />
+      </button>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+        {images.map((_, i) => (
+          <button key={i} onClick={e => { e.stopPropagation(); setIdx(i); }}
+            className={`w-2 h-2 rounded-full transition-colors ${i === idx ? 'bg-gold' : 'bg-white/40'}`} />
+        ))}
+      </div>
+      <span className="absolute bottom-4 right-6 text-white/50 text-sm">{idx + 1} / {images.length}</span>
+    </div>
+  );
+}
+
 function PropertyModal({ property, onClose, addToast }) {
   const [imgIdx, setImgIdx] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
   const [showInquiry, setShowInquiry] = useState(false);
+  const [sending, setSending] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const images = property.images?.length ? property.images : [null];
 
-  function submitInquiry(e) {
+  async function submitInquiry(e) {
     e.preventDefault();
-    addToast('Inquiry sent! The agent will contact you shortly.', 'success');
+    if (sending) return;
+    setSending(true);
+    try {
+      await addInquiry({
+        propertyId: property.id,
+        propertyTitle: property.title,
+        name: form.name,
+        email: form.email,
+        message: form.message,
+      });
+      addToast('Inquiry sent! The agent will contact you shortly.', 'success');
+    } catch {
+      addToast('Failed to send inquiry. Try again.', 'error');
+    }
+    setSending(false);
     setShowInquiry(false);
     setForm({ name: '', email: '', message: '' });
   }
@@ -71,7 +112,7 @@ function PropertyModal({ property, onClose, addToast }) {
         {/* Image Gallery */}
         <div className="relative aspect-video bg-navy">
           <ImageWithFallback src={images[imgIdx]} alt={property.title} type={property.type}
-            className="w-full h-full object-cover rounded-t-2xl" />
+            className="w-full h-full object-cover rounded-t-2xl cursor-zoom-in" onClick={() => images[imgIdx] && setLightbox(true)} />
           {images.length > 1 && (
             <>
               <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
@@ -96,7 +137,9 @@ function PropertyModal({ property, onClose, addToast }) {
           </button>
         </div>
 
-        {/* Thumbnails */}
+        {lightbox && images[0] && (
+          <LightBox images={images.filter(Boolean)} startIdx={imgIdx} type={property.type} onClose={() => setLightbox(false)} />
+        )}
         {images.length > 1 && (
           <div className="flex gap-2 px-6 pt-3">
             {images.map((img, i) => (
@@ -140,7 +183,7 @@ function PropertyModal({ property, onClose, addToast }) {
           </div>
 
           {property.description && (
-            <div className="mb-4">
+            <div className="bg-navy border border-white/10 rounded-xl p-4 mb-4">
               <h4 className="text-primary font-semibold text-sm mb-2">Description</h4>
               <p className="text-muted text-sm leading-relaxed">{property.description}</p>
             </div>
@@ -152,6 +195,17 @@ function PropertyModal({ property, onClose, addToast }) {
               <div className="flex flex-wrap gap-2">
                 {property.amenities.map(a => (
                   <span key={a} className="bg-navy border border-white/10 text-muted text-xs px-3 py-1 rounded-full">{a}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {property.videos?.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-primary font-semibold text-sm mb-2">Videos</h4>
+              <div className="flex flex-col gap-3">
+                {property.videos.map((vid, i) => (
+                  <video key={i} src={vid} controls className="w-full rounded-xl border border-white/10" />
                 ))}
               </div>
             </div>
@@ -186,8 +240,8 @@ function PropertyModal({ property, onClose, addToast }) {
               <textarea required rows={3} placeholder="Your message..." value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                 className="bg-navy border border-white/10 rounded-lg px-4 py-2 text-primary text-sm placeholder:text-muted focus:outline-none focus:border-gold resize-none" />
               <div className="flex gap-2">
-                <button type="submit" className="flex-1 bg-gold text-navy font-semibold py-2 rounded-lg hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2">
-                  <Send size={14} /> Send
+                <button type="submit" disabled={sending} className="flex-1 bg-gold text-navy font-semibold py-2 rounded-lg hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                  {sending ? <div className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" /> : <><Send size={14} /> Send</>}
                 </button>
                 <button type="button" onClick={() => setShowInquiry(false)}
                   className="px-4 py-2 border border-white/10 text-muted rounded-lg hover:text-primary transition-colors text-sm">
@@ -250,7 +304,7 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 w-full">
           <div className="max-w-2xl">
-            <p className="text-gold text-sm font-semibold tracking-widest uppercase mb-4">Premium Properties in Cebu</p>
+            <p className="text-gold text-sm font-semibold tracking-widest uppercase mb-4">Premium Properties in Bohol</p>
             <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl text-primary font-bold leading-tight mb-6">
               Find Your<br /><span className="text-gold">Perfect Home</span>
             </h1>

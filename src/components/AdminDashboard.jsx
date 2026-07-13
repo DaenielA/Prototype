@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, List, PlusCircle, LogOut, Bell, Trash2, Pencil, Eye, EyeOff,
   TrendingUp, Home, Building2, Layers, X, Check, Menu, Upload
 } from 'lucide-react';
-import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo } from '../data/seed';
+import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo, fetchInquiries, markInquiryRead } from '../data/seed';
 
 const EMPTY_FORM = {
   title: '', type: 'House', status: 'For Sale', price: '', location: '', address: '',
@@ -289,6 +289,21 @@ export default function AdminDashboard({ listings, setListings, onLogout, addToa
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [inquiries, setInquiries] = useState([]);
+  const [showInquiries, setShowInquiries] = useState(false);
+
+  useEffect(() => {
+    fetchInquiries().then(setInquiries).catch(() => {});
+  }, []);
+
+  const unreadCount = inquiries.filter(i => !i.read).length;
+
+  async function openInquiries() {
+    setShowInquiries(true);
+    const unread = inquiries.filter(i => !i.read);
+    await Promise.all(unread.map(i => markInquiryRead(i.id)));
+    setInquiries(prev => prev.map(i => ({ ...i, read: true })));
+  }
 
   async function handleSave(listing) {
     try {
@@ -395,9 +410,13 @@ export default function AdminDashboard({ listings, setListings, onLogout, addToa
             </button>
             <h2 className="font-serif text-lg text-primary font-semibold">{pageTitles[view] || 'Dashboard'}</h2>
           </div>
-          <button className="text-muted hover:text-primary relative">
+          <button onClick={openInquiries} className="text-muted hover:text-primary relative">
             <Bell size={20} />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-gold rounded-full" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-gold rounded-full text-navy text-[10px] font-bold flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
           </button>
         </header>
 
@@ -437,7 +456,7 @@ export default function AdminDashboard({ listings, setListings, onLogout, addToa
                               {p.status}
                             </span>
                           </td>
-                          <td className="px-6 py-3 text-muted">{new Date(p.dateAdded).toLocaleDateString()}</td>
+                          <td className="px-6 py-3 text-muted">{p.dateAdded?.toDate ? p.dateAdded.toDate().toLocaleDateString() : new Date(p.dateAdded).toLocaleDateString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -537,6 +556,36 @@ export default function AdminDashboard({ listings, setListings, onLogout, addToa
           onConfirm={() => handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
         />
+      )}
+
+      {showInquiries && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-end p-4" onClick={() => setShowInquiries(false)}>
+          <div className="bg-card border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto mt-16 mr-2" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="font-serif text-primary font-semibold">Inquiries</h3>
+              <button onClick={() => setShowInquiries(false)} className="text-muted hover:text-primary"><X size={18} /></button>
+            </div>
+            {inquiries.length === 0 ? (
+              <p className="text-muted text-sm text-center py-10">No inquiries yet.</p>
+            ) : (
+              <div className="flex flex-col divide-y divide-white/5">
+                {inquiries.map(inq => (
+                  <div key={inq.id} className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <p className="text-primary text-sm font-semibold">{inq.name}</p>
+                      <span className="text-muted text-xs shrink-0">
+                        {inq.createdAt?.toDate ? inq.createdAt.toDate().toLocaleDateString() : ''}
+                      </span>
+                    </div>
+                    <p className="text-gold text-xs mb-1">{inq.propertyTitle}</p>
+                    <a href={`mailto:${inq.email}`} className="text-blue-400 hover:text-blue-300 text-xs mb-1 block transition-colors">{inq.email}</a>
+                    <p className="text-muted text-sm leading-relaxed">{inq.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
