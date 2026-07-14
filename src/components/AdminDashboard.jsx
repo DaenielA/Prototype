@@ -14,7 +14,8 @@ const EMPTY_FORM = {
 };
 
 
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon, label, value, color }) {
+  const Icon = icon;
   return (
     <div className="bg-card border border-white/10 rounded-2xl p-5 flex items-center gap-4">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
@@ -284,7 +285,7 @@ function PropertyForm({ initial, onSave, onCancel, addToast }) {
   );
 }
 
-export default function AdminDashboard({ listings, setListings, onLogout, addToast, reloadListings }) {
+export default function AdminDashboard({ listings, onLogout, addToast, reloadListings }) {
   const [view, setView] = useState('overview');
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);

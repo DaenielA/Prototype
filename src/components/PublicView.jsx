@@ -52,7 +52,7 @@ function PropertyCard({ property, onClick }) {
   );
 }
 
-function LightBox({ images, startIdx, type, onClose }) {
+function LightBox({ images, startIdx, onClose }) {
   const [idx, setIdx] = useState(startIdx);
   function prev(e) { e.stopPropagation(); setIdx(i => (i - 1 + images.length) % images.length); }
   function next(e) { e.stopPropagation(); setIdx(i => (i + 1) % images.length); }
@@ -82,6 +82,7 @@ function PropertyModal({ property, onClose, addToast }) {
   const [lightbox, setLightbox] = useState(false);
   const [showInquiry, setShowInquiry] = useState(false);
   const [sending, setSending] = useState(false);
+  const [refNumber, setRefNumber] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const images = property.images?.length ? property.images : [null];
 
@@ -90,20 +91,22 @@ function PropertyModal({ property, onClose, addToast }) {
     if (sending) return;
     setSending(true);
     try {
-      await addInquiry({
+      const id = await addInquiry({
         propertyId: property.id,
         propertyTitle: property.title,
         name: form.name,
         email: form.email,
         message: form.message,
       });
-      addToast('Inquiry sent! The agent will contact you shortly.', 'success');
-    } catch {
-      addToast('Failed to send inquiry. Try again.', 'error');
+      setRefNumber(id.slice(0, 8).toUpperCase());
+    } catch (err) {
+      if (err.message === 'rate_limited') {
+        addToast('Too many inquiries. Please wait 10 minutes before trying again.', 'error');
+      } else {
+        addToast('Failed to send inquiry. Try again.', 'error');
+      }
     }
     setSending(false);
-    setShowInquiry(false);
-    setForm({ name: '', email: '', message: '' });
   }
 
   return (
@@ -225,12 +228,22 @@ function PropertyModal({ property, onClose, addToast }) {
             </div>
           </div>
 
-          {!showInquiry ? (
+          {!showInquiry && !refNumber && (
             <button onClick={() => setShowInquiry(true)}
               className="w-full bg-gold text-navy font-semibold py-3 rounded-xl hover:bg-yellow-400 transition-colors">
               Inquire Now
             </button>
-          ) : (
+          )}
+
+          {refNumber && (
+            <div className="border border-emerald-500/30 bg-emerald-500/10 rounded-xl p-4 text-center">
+              <p className="text-emerald-400 font-semibold text-sm mb-1">Inquiry Sent!</p>
+              <p className="text-muted text-xs mb-2">The agent will contact you shortly.</p>
+              <p className="text-primary text-xs">Reference No: <span className="font-bold text-gold tracking-widest">{refNumber}</span></p>
+            </div>
+          )}
+
+          {showInquiry && !refNumber && (
             <form onSubmit={submitInquiry} className="flex flex-col gap-3 border border-gold/30 rounded-xl p-4">
               <h4 className="text-primary font-semibold text-sm">Send an Inquiry</h4>
               <input required placeholder="Your Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}

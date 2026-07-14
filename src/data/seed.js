@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, orderBy, serverTimestamp
+  query, orderBy, where, serverTimestamp, Timestamp
 } from 'firebase/firestore';
 
 const COL = 'listings';
@@ -120,7 +120,15 @@ export async function uploadVideo(file) {
 const INQ = 'inquiries';
 
 export async function addInquiry(data) {
-  await addDoc(collection(db, INQ), { ...data, read: false, createdAt: serverTimestamp() });
+  const tenMinutesAgo = Timestamp.fromMillis(Date.now() - 10 * 60 * 1000);
+  const recentSnap = await getDocs(query(
+    collection(db, INQ),
+    where('email', '==', data.email),
+    where('createdAt', '>=', tenMinutesAgo)
+  ));
+  if (recentSnap.size >= 3) throw new Error('rate_limited');
+  const ref = await addDoc(collection(db, INQ), { ...data, read: false, createdAt: serverTimestamp() });
+  return ref.id;
 }
 
 export async function fetchInquiries() {

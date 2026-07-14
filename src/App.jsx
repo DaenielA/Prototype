@@ -47,7 +47,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadListings();
+    const id = setTimeout(() => { loadListings(); }, 0);
+    return () => clearTimeout(id);
   }, [loadListings]);
 
   async function handleLogout() {
@@ -77,7 +78,6 @@ export default function App() {
       {view === 'admin' && (
         <AdminDashboard
           listings={listings}
-          setListings={setListings}
           onLogout={handleLogout}
           addToast={addToast}
           reloadListings={loadListings}
