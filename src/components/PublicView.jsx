@@ -348,6 +348,12 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
             <button onClick={() => {}} className="mt-3 w-full sm:w-auto bg-gold text-navy font-semibold px-8 py-3 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
               <Search size={16} /> Search Properties
             </button>
+            {(filters.type !== 'All' || filters.location || filters.minPrice || filters.maxPrice) && (
+              <button onClick={() => setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' })}
+                className="mt-3 w-full sm:w-auto border border-white/20 text-muted px-8 py-3 rounded-xl hover:text-primary hover:border-white/40 transition-colors flex items-center gap-2 text-sm">
+                <X size={15} /> Clear Filters
+              </button>
+            )}
           </div>
         </div>
       </section>
