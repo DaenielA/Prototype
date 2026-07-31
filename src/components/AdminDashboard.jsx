@@ -4,15 +4,17 @@ import {
   LayoutDashboard, List, PlusCircle, LogOut, Bell, Trash2, Pencil, Eye, EyeOff,
   TrendingUp, Home, Building2, Layers, X, Check, Menu, Upload
 } from 'lucide-react';
-import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo, fetchInquiries, markInquiryRead } from '../data/seed';
+import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo, fetchInquiries, markInquiryRead, addDeveloper, updateDeveloper, deleteDeveloper } from '../data/seed';
 
 const EMPTY_FORM = {
   title: '', type: 'House', status: 'For Sale', price: '', location: '', address: '',
   bedrooms: '', bathrooms: '', floorArea: '', lotArea: '', parking: '', furnishing: 'Bare',
   yearBuilt: '', description: '', amenities: [], images: [], videos: [],
   agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
-  visible: true,
+  visible: true, listingType: 'independent', developerId: '',
 };
+
+const EMPTY_DEV_FORM = { name: '', description: '', logo: '' };
 
 
 function StatCard({ icon, label, value, color }) {
@@ -44,8 +46,63 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
   );
 }
 
-function PropertyForm({ initial, onSave, onCancel, addToast }) {
-  const [form, setForm] = useState(initial ? { ...initial, images: initial.images || [], videos: initial.videos || [] } : EMPTY_FORM);
+function DeveloperForm({ initial, onSave, onCancel, addToast }) {
+  const [form, setForm] = useState(initial ? { ...initial } : EMPTY_DEV_FORM);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setForm(f => ({ ...f, logo: url }));
+    } catch {
+      addToast('Logo upload failed.', 'error');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    await onSave(form);
+  }
+
+  const inputCls = "w-full bg-navy border border-white/10 rounded-xl px-4 py-2.5 text-primary text-sm placeholder:text-muted focus:outline-none focus:border-gold transition-colors";
+  const labelCls = "text-muted text-xs mb-1 block";
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-lg flex flex-col gap-4">
+      <div>
+        <label className={labelCls}>Developer Name *</label>
+        <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Camella Homes" className={inputCls} />
+      </div>
+      <div>
+        <label className={labelCls}>Description</label>
+        <textarea rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description..." className={`${inputCls} resize-none`} />
+      </div>
+      <div>
+        <label className={labelCls}>Logo</label>
+        {form.logo && <img src={form.logo} alt="logo" className="w-20 h-14 object-contain rounded-lg border border-white/10 mb-2" />}
+        <label className="flex items-center gap-3 cursor-pointer border border-dashed border-white/20 hover:border-gold/50 rounded-xl px-4 py-3 transition-colors">
+          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
+          {uploading ? <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" /> : <Upload size={16} className="text-muted" />}
+          <span className="text-muted text-sm">{uploading ? 'Uploading...' : 'Upload logo'}</span>
+        </label>
+      </div>
+      <div className="flex gap-3 mt-2">
+        <button type="submit" className="bg-gold text-navy font-semibold px-6 py-2.5 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
+          <Check size={16} /> Save Developer
+        </button>
+        <button type="button" onClick={onCancel} className="border border-white/10 text-muted px-6 py-2.5 rounded-xl hover:text-primary transition-colors text-sm">Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function PropertyForm({ initial, onSave, onCancel, addToast, developers }) {
+  const [form, setForm] = useState(initial ? { ...EMPTY_FORM, ...initial, images: initial.images || [], videos: initial.videos || [] } : EMPTY_FORM);
   const [amenityInput, setAmenityInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -122,6 +179,30 @@ function PropertyForm({ initial, onSave, onCancel, addToast }) {
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <label className={labelCls}>Listing Category</label>
+          <div className="flex gap-4 mt-1 mb-1">
+            {[['independent', 'Independent Property'], ['developer', 'Under a Developer']].map(([val, label]) => (
+              <label key={val} className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="listingType" value={val} checked={(form.listingType || 'independent') === val}
+                  onChange={() => { setF('listingType', val); if (val === 'independent') setF('developerId', ''); }}
+                  className="accent-gold" />
+                <span className="text-primary text-sm">{label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {form.listingType === 'developer' && (
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Developer *</label>
+            <select value={form.developerId} onChange={e => setF('developerId', e.target.value)} className={inputCls}>
+              <option value="">-- Select Developer --</option>
+              {(developers || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+        )}
+
         <div className="sm:col-span-2">
           <label className={labelCls}>Property Title *</label>
           <input required value={form.title} onChange={e => setF('title', e.target.value)} placeholder="e.g. Modern 3BR House in Cebu City" className={inputCls} />
@@ -286,13 +367,15 @@ function PropertyForm({ initial, onSave, onCancel, addToast }) {
   );
 }
 
-export default function AdminDashboard({ listings, onLogout, addToast, reloadListings }) {
+export default function AdminDashboard({ listings, developers, onLogout, addToast, reloadListings }) {
   const [view, setView] = useState('overview');
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inquiries, setInquiries] = useState([]);
   const [showInquiries, setShowInquiries] = useState(false);
+  const [devEditTarget, setDevEditTarget] = useState(null);
+  const [devDeleteTarget, setDevDeleteTarget] = useState(null);
 
   useEffect(() => {
     fetchInquiries().then(setInquiries).catch(() => {});
@@ -351,13 +434,42 @@ export default function AdminDashboard({ listings, onLogout, addToast, reloadLis
   const forRent = listings.filter(l => l.status === 'For Rent').length;
   const recent = [...listings].sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded)).slice(0, 5);
 
+  async function handleDevSave(data) {
+    try {
+      if (devEditTarget?.id) {
+        await updateDeveloper(devEditTarget.id, data);
+      } else {
+        await addDeveloper(data);
+      }
+      await reloadListings();
+      addToast('Developer saved!', 'success');
+      setView('developers');
+      setDevEditTarget(null);
+    } catch {
+      addToast('Failed to save developer.', 'error');
+    }
+  }
+
+  async function handleDevDelete(id) {
+    try {
+      await deleteDeveloper(id);
+      await reloadListings();
+      addToast('Developer deleted.', 'success');
+    } catch {
+      addToast('Failed to delete developer.', 'error');
+    } finally {
+      setDevDeleteTarget(null);
+    }
+  }
+
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'listings', label: 'My Listings', icon: List },
+    { id: 'developers', label: 'Developers', icon: Building2 },
     { id: 'add', label: 'Add Property', icon: PlusCircle },
   ];
 
-  const pageTitles = { overview: 'Overview', listings: 'My Listings', add: 'Add Property', edit: 'Edit Property' };
+  const pageTitles = { overview: 'Overview', listings: 'My Listings', add: 'Add Property', edit: 'Edit Property', developers: 'Developers', addDev: 'Add Developer', editDev: 'Edit Developer' };
 
   function NavItem({ item }) {
     const Icon = item.icon;
@@ -539,14 +651,73 @@ export default function AdminDashboard({ listings, onLogout, addToast, reloadLis
           {/* Add Property */}
           {view === 'add' && (
             <div className="bg-card border border-white/10 rounded-2xl p-6">
-              <PropertyForm onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} />
+              <PropertyForm onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} developers={developers} />
             </div>
           )}
 
           {/* Edit Property */}
           {view === 'edit' && editTarget && (
             <div className="bg-card border border-white/10 rounded-2xl p-6">
-              <PropertyForm initial={editTarget} onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} />
+              <PropertyForm initial={editTarget} onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} developers={developers} />
+            </div>
+          )}
+
+          {/* Developers */}
+          {view === 'developers' && (
+            <div>
+              <div className="flex justify-end mb-4">
+                <button onClick={() => { setDevEditTarget(null); setView('addDev'); }} className="bg-gold text-navy text-sm font-semibold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
+                  <PlusCircle size={15} /> Add Developer
+                </button>
+              </div>
+              <div className="bg-card border border-white/10 rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        {['Logo', 'Name', 'Description', 'Listings', 'Actions'].map(h => (
+                          <th key={h} className="text-left text-muted text-xs font-medium px-4 py-3">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {developers.length === 0 && (
+                        <tr><td colSpan={5} className="text-center text-muted py-10">No developers yet.</td></tr>
+                      )}
+                      {developers.map(d => (
+                        <tr key={d.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="px-4 py-3">
+                            {d.logo
+                              ? <img src={d.logo} alt={d.name} className="w-12 h-10 object-contain rounded-lg border border-white/10" />
+                              : <div className="w-12 h-10 rounded-lg bg-navy border border-white/10 flex items-center justify-center text-muted"><Building2 size={14} /></div>}
+                          </td>
+                          <td className="px-4 py-3 text-primary font-semibold">{d.name}</td>
+                          <td className="px-4 py-3 text-muted max-w-[200px] truncate">{d.description || '—'}</td>
+                          <td className="px-4 py-3 text-gold">{listings.filter(l => l.developerId === d.id).length}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => { setDevEditTarget(d); setView('editDev'); }} className="text-muted hover:text-gold transition-colors"><Pencil size={15} /></button>
+                              <button onClick={() => setDevDeleteTarget(d.id)} className="text-muted hover:text-red-400 transition-colors"><Trash2 size={15} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {view === 'addDev' && (
+            <div className="bg-card border border-white/10 rounded-2xl p-6">
+              <DeveloperForm onSave={handleDevSave} onCancel={() => setView('developers')} addToast={addToast} />
+            </div>
+          )}
+
+          {view === 'editDev' && devEditTarget && (
+            <div className="bg-card border border-white/10 rounded-2xl p-6">
+              <DeveloperForm initial={devEditTarget} onSave={handleDevSave} onCancel={() => setView('developers')} addToast={addToast} />
             </div>
           )}
         </main>
@@ -557,6 +728,14 @@ export default function AdminDashboard({ listings, onLogout, addToast, reloadLis
           message="Are you sure you want to delete this listing? This action cannot be undone."
           onConfirm={() => handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {devDeleteTarget && (
+        <ConfirmDialog
+          message="Delete this developer? Listings under it will become independent."
+          onConfirm={() => handleDevDelete(devDeleteTarget)}
+          onCancel={() => setDevDeleteTarget(null)}
         />
       )}
 

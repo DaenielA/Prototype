@@ -269,13 +269,16 @@ function PropertyModal({ property, onClose, addToast }) {
   );
 }
 
-export default function PublicView({ listings, onAdminClick, addToast }) {
+export default function PublicView({ listings, developers, onAdminClick, addToast }) {
   const [filters, setFilters] = useState({ type: 'All', location: '', minPrice: '', maxPrice: '' });
   const [selected, setSelected] = useState(null);
+  const [activeDev, setActiveDev] = useState(null);
 
   const visible = listings.filter(p => p.visible);
+  const independentListings = visible.filter(p => !p.developerId || p.listingType === 'independent');
+  const devListings = activeDev ? visible.filter(p => p.developerId === activeDev) : [];
 
-  const filtered = visible.filter(p => {
+  const filtered = (activeDev ? devListings : independentListings).filter(p => {
     if (filters.type !== 'All' && p.type !== filters.type) return false;
     if (filters.location && !p.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
     if (filters.minPrice && p.price < Number(filters.minPrice)) return false;
@@ -358,12 +361,51 @@ export default function PublicView({ listings, onAdminClick, addToast }) {
         </div>
       </section>
 
+      {/* Developers Section */}
+      {developers.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-4">
+          <div className="mb-6">
+            <p className="text-gold text-xs font-semibold tracking-widest uppercase mb-2">Developers</p>
+            <h2 className="font-serif text-3xl sm:text-4xl text-primary font-bold">Our Developers</h2>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            {developers.map(d => {
+              const count = visible.filter(p => p.developerId === d.id).length;
+              const isActive = activeDev === d.id;
+              return (
+                <button key={d.id} onClick={() => { setActiveDev(isActive ? null : d.id); setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' }); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all ${
+                    isActive ? 'bg-gold/10 border-gold/40 text-gold' : 'bg-card border-white/10 text-primary hover:border-gold/30'
+                  }`}>
+                  {d.logo
+                    ? <img src={d.logo} alt={d.name} className="w-10 h-8 object-contain" />
+                    : <Building2 size={20} className="text-muted" />}
+                  <div className="text-left">
+                    <p className="text-sm font-semibold leading-tight">{d.name}</p>
+                    <p className="text-xs text-muted">{count} propert{count !== 1 ? 'ies' : 'y'}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {activeDev && (
+            <div className="mt-3">
+              <button onClick={() => setActiveDev(null)} className="flex items-center gap-1 text-muted text-xs hover:text-primary transition-colors">
+                <X size={12} /> Clear developer filter
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Listings */}
       <section id="listings" className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
         <div className="flex items-end justify-between mb-10">
           <div>
             <p className="text-gold text-xs font-semibold tracking-widest uppercase mb-2">Portfolio</p>
-            <h2 className="font-serif text-3xl sm:text-4xl text-primary font-bold">Available Properties</h2>
+            <h2 className="font-serif text-3xl sm:text-4xl text-primary font-bold">
+              {activeDev ? developers.find(d => d.id === activeDev)?.name + ' Properties' : 'Independent Properties'}
+            </h2>
           </div>
           <span className="text-muted text-sm">{filtered.length} listing{filtered.length !== 1 ? 's' : ''}</span>
         </div>

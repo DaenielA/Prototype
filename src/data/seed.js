@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore';
 
 const COL = 'listings';
+const DEV_COL = 'developers';
 
 export const SEED_LISTINGS = [
   {
@@ -68,6 +69,25 @@ export const SEED_LISTINGS = [
     visible: true, views: 29,
   },
 ];
+
+export async function fetchDevelopers() {
+  const q = query(collection(db, DEV_COL), orderBy('dateAdded', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function addDeveloper(data) {
+  const ref = await addDoc(collection(db, DEV_COL), { ...data, dateAdded: serverTimestamp() });
+  return ref.id;
+}
+
+export async function updateDeveloper(id, data) {
+  await updateDoc(doc(db, DEV_COL, id), data);
+}
+
+export async function deleteDeveloper(id) {
+  await deleteDoc(doc(db, DEV_COL, id));
+}
 
 export async function fetchListings() {
   const q = query(collection(db, COL), orderBy('dateAdded', 'desc'));

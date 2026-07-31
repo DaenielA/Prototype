@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { fetchListings, seedIfEmpty } from './data/seed';
+import { fetchListings, fetchDevelopers, seedIfEmpty } from './data/seed';
 import Toast from './components/Toast';
 import PublicView from './components/PublicView';
 import AdminLogin from './components/AdminLogin';
@@ -9,6 +9,7 @@ import AdminDashboard from './components/AdminDashboard';
 
 export default function App() {
   const [listings, setListings] = useState([]);
+  const [developers, setDevelopers] = useState([]);
   const [view, setView] = useState('public');
   const [toasts, setToasts] = useState([]);
   const [ready, setReady] = useState(false);
@@ -25,8 +26,9 @@ export default function App() {
   const loadListings = useCallback(async () => {
     try {
       await seedIfEmpty();
-      const data = await fetchListings();
+      const [data, devs] = await Promise.all([fetchListings(), fetchDevelopers()]);
       setListings(data);
+      setDevelopers(devs);
     } catch (e) {
       console.error('Listings error:', e);
       addToast('Failed to load listings.', 'error');
@@ -61,7 +63,7 @@ export default function App() {
       <div className="min-h-screen bg-navy flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted text-sm font-sans">Loading LuxeRealty...</p>
+          <p className="text-muted text-sm font-sans">Loading Homes By Juvy...</p>
         </div>
       </div>
     );
@@ -70,7 +72,7 @@ export default function App() {
   return (
     <>
       {view === 'public' && (
-        <PublicView listings={listings} onAdminClick={() => setView('login')} addToast={addToast} />
+        <PublicView listings={listings} developers={developers} onAdminClick={() => setView('login')} addToast={addToast} />
       )}
       {view === 'login' && (
         <AdminLogin onLogin={() => setView('admin')} onBack={() => setView('public')} addToast={addToast} />
@@ -78,6 +80,7 @@ export default function App() {
       {view === 'admin' && (
         <AdminDashboard
           listings={listings}
+          developers={developers}
           onLogout={handleLogout}
           addToast={addToast}
           reloadListings={loadListings}
