@@ -152,6 +152,27 @@ export async function updateProfile(id, data) {
   await updateDoc(doc(db, PROFILE_COL, id), data);
 }
 
+const PROJ_COL = 'projects';
+
+export async function fetchProjects(developerId) {
+  const q = query(collection(db, PROJ_COL), where('developerId', '==', developerId), orderBy('dateAdded', 'asc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function addProject(data) {
+  const ref = await addDoc(collection(db, PROJ_COL), { ...data, dateAdded: serverTimestamp() });
+  return ref.id;
+}
+
+export async function updateProject(id, data) {
+  await updateDoc(doc(db, PROJ_COL, id), data);
+}
+
+export async function deleteProject(id) {
+  await deleteDoc(doc(db, PROJ_COL, id));
+}
+
 export async function addDeveloper(data) {
   const ref = await addDoc(collection(db, DEV_COL), { ...data, dateAdded: serverTimestamp() });
   return ref.id;

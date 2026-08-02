@@ -4,7 +4,7 @@ import {
   LayoutDashboard, List, PlusCircle, LogOut, Bell, Trash2, Pencil, Eye, EyeOff,
   TrendingUp, Home, Building2, Layers, X, Check, Menu, Upload, UserCircle
 } from 'lucide-react';
-import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo, fetchInquiries, markInquiryRead, addDeveloper, updateDeveloper, deleteDeveloper, updateProfile, addPropertyType, addUnitType } from '../data/seed';
+import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo, fetchInquiries, markInquiryRead, addDeveloper, updateDeveloper, deleteDeveloper, updateProfile, addPropertyType, addUnitType, fetchProjects, addProject, updateProject, deleteProject } from '../data/seed';
 
 const EMPTY_FORM = {
   title: '', type: 'House', status: 'For Sale', price: '', location: '', address: '',
@@ -44,6 +44,56 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
         </div>
       </div>
     </div>
+  );
+}
+
+const EMPTY_PROJ_FORM = { name: '', logo: '' };
+
+function ProjectForm({ initial, developerId, onSave, onCancel, addToast }) {
+  const [form, setForm] = useState(initial ? { ...initial } : EMPTY_PROJ_FORM);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setForm(f => ({ ...f, logo: url }));
+    } catch { addToast('Logo upload failed.', 'error'); }
+    finally { setUploading(false); }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    await onSave({ ...form, developerId });
+  }
+
+  const inputCls = "w-full bg-navy border border-white/10 rounded-xl px-4 py-2.5 text-primary text-sm placeholder:text-muted focus:outline-none focus:border-gold transition-colors";
+  const labelCls = "text-muted text-xs mb-1 block";
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div>
+        <label className={labelCls}>Project Name *</label>
+        <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. The Residences" className={inputCls} />
+      </div>
+      <div>
+        <label className={labelCls}>Project Logo</label>
+        {form.logo && <img src={form.logo} alt="logo" className="w-20 h-14 object-contain rounded-lg border border-white/10 mb-2" />}
+        <label className="flex items-center gap-3 cursor-pointer border border-dashed border-white/20 hover:border-gold/50 rounded-xl px-4 py-3 transition-colors">
+          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
+          {uploading ? <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" /> : <Upload size={16} className="text-muted" />}
+          <span className="text-muted text-sm">{uploading ? 'Uploading...' : 'Upload project logo'}</span>
+        </label>
+      </div>
+      <div className="flex gap-3">
+        <button type="submit" className="bg-gold text-navy font-semibold px-6 py-2.5 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
+          <Check size={16} /> Save Project
+        </button>
+        <button type="button" onClick={onCancel} className="border border-white/10 text-muted px-6 py-2.5 rounded-xl hover:text-primary transition-colors text-sm">Cancel</button>
+      </div>
+    </form>
   );
 }
 
@@ -154,6 +204,24 @@ function ProfileForm({ initial, onSave, onCancel, addToast }) {
         <button type="button" onClick={onCancel} className="border border-white/10 text-muted px-6 py-2.5 rounded-xl hover:text-primary transition-colors text-sm">Cancel</button>
       </div>
     </form>
+  );
+}
+
+function DevProjectPicker({ developerId, value, onChange, inputCls, labelCls }) {
+  const [projects, setProjects] = useState([]);
+  useEffect(() => {
+    if (!developerId) return;
+    fetchProjects(developerId).then(setProjects).catch(() => setProjects([]));
+  }, [developerId]);
+  if (projects.length === 0) return null;
+  return (
+    <div className="sm:col-span-2">
+      <label className={labelCls}>Project (optional)</label>
+      <select value={value} onChange={e => onChange(e.target.value)} className={inputCls}>
+        <option value="">-- No specific project --</option>
+        {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+    </div>
   );
 }
 
@@ -309,11 +377,15 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers, propert
         {form.listingType === 'developer' && (
           <div className="sm:col-span-2">
             <label className={labelCls}>Developer *</label>
-            <select value={form.developerId} onChange={e => setF('developerId', e.target.value)} className={inputCls}>
+            <select value={form.developerId} onChange={e => { setF('developerId', e.target.value); setF('projectId', ''); }} className={inputCls}>
               <option value="">-- Select Developer --</option>
               {(developers || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </div>
+        )}
+
+        {form.listingType === 'developer' && form.developerId && (
+          <DevProjectPicker developerId={form.developerId} value={form.projectId || ''} onChange={val => setF('projectId', val)} inputCls={inputCls} labelCls={labelCls} />
         )}
 
         <div className="sm:col-span-2">
@@ -488,6 +560,7 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers, propert
         </div>
 
         <div>
+          <label className={labelCls}>Agent Name</label>
           <input value={form.agentName} onChange={e => setF('agentName', e.target.value)} className={inputCls} />
         </div>
         <div>
@@ -530,6 +603,23 @@ export default function AdminDashboard({ listings, developers, profile, property
   const [devEditTarget, setDevEditTarget] = useState(null);
   const [devDeleteTarget, setDevDeleteTarget] = useState(null);
   const [listingTab, setListingTab] = useState('brokerage');
+  const [selectedDev, setSelectedDev] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [projEditTarget, setProjEditTarget] = useState(null);
+  const [projDeleteTarget, setProjDeleteTarget] = useState(null);
+
+  async function loadProjects(devId) {
+    try {
+      const data = await fetchProjects(devId);
+      setProjects(data);
+    } catch { setProjects([]); }
+  }
+
+  function openDeveloper(dev) {
+    setSelectedDev(dev);
+    loadProjects(dev.id);
+    setView('devDetail');
+  }
 
   useEffect(() => {
     fetchInquiries().then(setInquiries).catch(() => {});
@@ -598,6 +688,29 @@ export default function AdminDashboard({ listings, developers, profile, property
   const memorialListings = listings.filter(l => l.listingType === 'memorial');
   const currentListingSet = listingTab === 'brokerage' ? brokerageListings : listingTab === 'developer' ? developerListings : memorialListings;
 
+  async function handleProjSave(data) {
+    try {
+      if (projEditTarget?.id) {
+        await updateProject(projEditTarget.id, data);
+      } else {
+        await addProject(data);
+      }
+      await loadProjects(selectedDev.id);
+      addToast('Project saved!', 'success');
+      setView('devDetail');
+      setProjEditTarget(null);
+    } catch { addToast('Failed to save project.', 'error'); }
+  }
+
+  async function handleProjDelete(id) {
+    try {
+      await deleteProject(id);
+      await loadProjects(selectedDev.id);
+      addToast('Project deleted.', 'success');
+    } catch { addToast('Failed to delete project.', 'error'); }
+    finally { setProjDeleteTarget(null); }
+  }
+
   async function handleDevSave(data) {
     try {
       if (devEditTarget?.id) {
@@ -644,7 +757,7 @@ export default function AdminDashboard({ listings, developers, profile, property
     { id: 'add', label: 'Add Property', icon: PlusCircle },
   ];
 
-  const pageTitles = { overview: 'Overview', listings: 'My Listings', add: 'Add Property', edit: 'Edit Property', developers: 'Developers', addDev: 'Add Developer', editDev: 'Edit Developer', profile: 'Profile' };
+  const pageTitles = { overview: 'Overview', listings: 'My Listings', add: 'Add Property', edit: 'Edit Property', developers: 'Developers', addDev: 'Add Developer', editDev: 'Edit Developer', profile: 'Profile', devDetail: selectedDev?.name || 'Developer', addProj: 'Add Project', editProj: 'Edit Project' };
 
   function NavItem({ item }) {
     const Icon = item.icon;
@@ -871,7 +984,7 @@ export default function AdminDashboard({ listings, developers, profile, property
                         <tr><td colSpan={5} className="text-center text-muted py-10">No developers yet.</td></tr>
                       )}
                       {developers.map(d => (
-                        <tr key={d.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <tr key={d.id} className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openDeveloper(d)}>
                           <td className="px-4 py-3">
                             {d.logo
                               ? <img src={d.logo} alt={d.name} className="w-12 h-10 object-contain rounded-lg border border-white/10" />
@@ -881,7 +994,7 @@ export default function AdminDashboard({ listings, developers, profile, property
                           <td className="px-4 py-3 text-muted max-w-[200px] truncate">{d.description || '—'}</td>
                           <td className="px-4 py-3 text-gold">{listings.filter(l => l.developerId === d.id).length}</td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                               <button onClick={() => { setDevEditTarget(d); setView('editDev'); }} className="text-muted hover:text-gold transition-colors"><Pencil size={15} /></button>
                               <button onClick={() => setDevDeleteTarget(d.id)} className="text-muted hover:text-red-400 transition-colors"><Trash2 size={15} /></button>
                             </div>
@@ -892,6 +1005,65 @@ export default function AdminDashboard({ listings, developers, profile, property
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Developer Detail */}
+          {view === 'devDetail' && selectedDev && (
+            <div>
+              <button onClick={() => setView('developers')} className="text-muted hover:text-primary text-sm mb-4 flex items-center gap-1">
+                ← Back to Developers
+              </button>
+              <div className="bg-card border border-white/10 rounded-2xl p-6 mb-6 flex items-center gap-4">
+                {selectedDev.logo
+                  ? <img src={selectedDev.logo} alt={selectedDev.name} className="w-16 h-14 object-contain rounded-xl border border-white/10" />
+                  : <div className="w-16 h-14 rounded-xl bg-navy border border-white/10 flex items-center justify-center text-muted"><Building2 size={20} /></div>}
+                <div>
+                  <p className="text-primary font-serif font-bold text-xl">{selectedDev.name}</p>
+                  {selectedDev.description && <p className="text-muted text-sm mt-1">{selectedDev.description}</p>}
+                </div>
+              </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-primary font-semibold">Projects</h3>
+                <button onClick={() => { setProjEditTarget(null); setView('addProj'); }} className="bg-gold text-navy text-sm font-semibold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
+                  <PlusCircle size={15} /> Add Project
+                </button>
+              </div>
+              {projects.length === 0 ? (
+                <div className="bg-card border border-white/10 rounded-2xl p-10 text-center text-muted">
+                  <p>No projects yet. Add a project to organize listings under this developer.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {projects.map(proj => (
+                    <div key={proj.id} className="bg-card border border-white/10 rounded-2xl p-4 flex items-center gap-4">
+                      {proj.logo
+                        ? <img src={proj.logo} alt={proj.name} className="w-14 h-12 object-contain rounded-lg border border-white/10" />
+                        : <div className="w-14 h-12 rounded-lg bg-navy border border-white/10 flex items-center justify-center text-muted"><Layers size={16} /></div>}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-primary font-semibold text-sm truncate">{proj.name}</p>
+                        <p className="text-muted text-xs">{listings.filter(l => l.projectId === proj.id).length} listing(s)</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setProjEditTarget(proj); setView('editProj'); }} className="text-muted hover:text-gold transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setProjDeleteTarget(proj.id)} className="text-muted hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {view === 'addProj' && selectedDev && (
+            <div className="bg-card border border-white/10 rounded-2xl p-6 max-w-lg">
+              <ProjectForm developerId={selectedDev.id} onSave={handleProjSave} onCancel={() => setView('devDetail')} addToast={addToast} />
+            </div>
+          )}
+
+          {view === 'editProj' && projEditTarget && selectedDev && (
+            <div className="bg-card border border-white/10 rounded-2xl p-6 max-w-lg">
+              <ProjectForm initial={projEditTarget} developerId={selectedDev.id} onSave={handleProjSave} onCancel={() => setView('devDetail')} addToast={addToast} />
             </div>
           )}
 
@@ -920,6 +1092,14 @@ export default function AdminDashboard({ listings, developers, profile, property
           message="Are you sure you want to delete this listing? This action cannot be undone."
           onConfirm={() => handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {projDeleteTarget && (
+        <ConfirmDialog
+          message="Delete this project? Listings under it will remain but lose their project assignment."
+          onConfirm={() => handleProjDelete(projDeleteTarget)}
+          onCancel={() => setProjDeleteTarget(null)}
         />
       )}
 

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, MapPin, Bed, Bath, Maximize2, X, ChevronLeft, ChevronRight, Phone, Mail, Send, Building2, Home, Layers } from 'lucide-react';
-import { formatPrice, addInquiry } from '../data/seed';
+import { formatPrice, addInquiry, fetchProjects } from '../data/seed';
 
 const TYPE_ICON = { House: Home, Condo: Building2, 'House & Lot': Home, Commercial: Building2, 'Lot Only': Layers };
 
@@ -275,8 +275,27 @@ export default function PublicView({ listings, developers, profile, onAdminClick
   const [filters, setFilters] = useState({ type: 'All', location: '', minPrice: '', maxPrice: '' });
   const [selected, setSelected] = useState(null);
   const [activeDev, setActiveDev] = useState(null);
+  const [activeProject, setActiveProject] = useState(null);
+  const [devProjects, setDevProjects] = useState([]);
   const [publicTab, setPublicTab] = useState('home');
   const [listingSection, setListingSection] = useState('brokerage');
+
+  async function handleDevClick(dev) {
+    if (activeDev === dev.id) {
+      setActiveDev(null);
+      setActiveProject(null);
+      setDevProjects([]);
+      return;
+    }
+    setActiveDev(dev.id);
+    setActiveProject(null);
+    try {
+      const projs = await fetchProjects(dev.id);
+      setDevProjects(projs);
+      // if no projects, go straight to listings
+      if (projs.length === 0) setActiveProject(null);
+    } catch { setDevProjects([]); }
+  }
 
   const visible = listings.filter(p => p.visible);
   const brokerageListings = visible.filter(p => p.listingType !== 'developer' && p.listingType !== 'memorial' && !p.developerId);
@@ -290,7 +309,12 @@ export default function PublicView({ listings, developers, profile, onAdminClick
   ];
 
   const currentListings = listingSection === 'developer'
-    ? (activeDev ? developerListings.filter(p => p.developerId === activeDev) : [])
+    ? (activeDev
+        ? developerListings.filter(p =>
+            p.developerId === activeDev &&
+            (devProjects.length === 0 || !activeProject || p.projectId === activeProject)
+          )
+        : [])
     : listingSection === 'brokerage'
       ? brokerageListings
       : memorialListings;
@@ -423,20 +447,38 @@ export default function PublicView({ listings, developers, profile, onAdminClick
             </div>
 
             {listingSection === 'developer' && developers.length > 0 && (
-              <div className="flex flex-wrap gap-3 mb-8">
-                {developers.map(d => {
-                  const count = visible.filter(p => p.developerId === d.id).length;
-                  const isActive = activeDev === d.id;
-                  return (
-                    <button key={d.id} onClick={() => { setActiveDev(isActive ? null : d.id); setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' }); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all ${isActive ? 'bg-gold/10 border-gold/40 text-gold' : 'bg-card border-white/10 text-primary hover:border-gold/30'}`}>
-                      {d.logo ? <img src={d.logo} alt={d.name} className="w-10 h-8 object-contain" /> : <Building2 size={20} className="text-muted" />}
-                      <div className="text-left">
-                        <p className="text-sm font-semibold leading-tight">{d.name}</p>
-                        <p className="text-xs text-muted">{count} propert{count !== 1 ? 'ies' : 'y'}</p>
-                      </div>
+              <div className="mb-6">
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {developers.map(d => {
+                    const count = visible.filter(p => p.developerId === d.id).length;
+                    const isActive = activeDev === d.id;
+                    return (
+                      <button key={d.id} onClick={() => handleDevClick(d)} className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all ${isActive ? 'bg-gold/10 border-gold/40 text-gold' : 'bg-card border-white/10 text-primary hover:border-gold/30'}`}>
+                        {d.logo ? <img src={d.logo} alt={d.name} className="w-10 h-8 object-contain" /> : <Building2 size={20} className="text-muted" />}
+                        <div className="text-left">
+                          <p className="text-sm font-semibold leading-tight">{d.name}</p>
+                          <p className="text-xs text-muted">{count} propert{count !== 1 ? 'ies' : 'y'}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {activeDev && devProjects.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <button onClick={() => setActiveProject(null)}
+                      className={`px-4 py-2 rounded-full border text-sm transition-colors ${!activeProject ? 'bg-gold/10 border-gold/40 text-gold' : 'border-white/10 text-muted hover:text-primary'}`}>
+                      All Projects
                     </button>
-                  );
-                })}
+                    {devProjects.map(proj => (
+                      <button key={proj.id} onClick={() => setActiveProject(proj.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-colors ${activeProject === proj.id ? 'bg-gold/10 border-gold/40 text-gold' : 'border-white/10 text-muted hover:text-primary'}`}>
+                        {proj.logo && <img src={proj.logo} alt={proj.name} className="w-5 h-4 object-contain" />}
+                        {proj.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
