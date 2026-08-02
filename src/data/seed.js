@@ -6,6 +6,18 @@ import {
 
 const COL = 'listings';
 const DEV_COL = 'developers';
+const PROFILE_COL = 'profile';
+const PROPERTY_TYPE_COL = 'propertyTypes';
+const UNIT_TYPE_COL = 'unitTypes';
+
+const DEFAULT_PROFILE = {
+  name: 'Juvy C. Espina',
+  picture: '/Juvy.jpg',
+  bio: 'Discover curated luxury properties across Bohol\'s most sought-after locations. Your dream home is just a search away.',
+};
+
+const DEFAULT_PROPERTY_TYPES = ['House', 'Condo', 'House & Lot', 'Lot Only', 'Commercial'];
+const DEFAULT_UNIT_TYPES = ['Studio', '1 Bedroom', '2 Bedroom', '3 Bedroom', 'Penthouse', 'Townhouse'];
 
 export const SEED_LISTINGS = [
   {
@@ -74,6 +86,70 @@ export async function fetchDevelopers() {
   const q = query(collection(db, DEV_COL), orderBy('dateAdded', 'desc'));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function fetchPropertyTypes() {
+  const q = query(collection(db, PROPERTY_TYPE_COL), orderBy('label', 'asc'));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    await Promise.all(DEFAULT_PROPERTY_TYPES.map(label => addDoc(collection(db, PROPERTY_TYPE_COL), { label, dateAdded: serverTimestamp() })));
+    return DEFAULT_PROPERTY_TYPES;
+  }
+
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).map(item => item.label);
+}
+
+export async function addPropertyType(label) {
+  const trimmed = label.trim();
+  if (!trimmed) return null;
+
+  const snap = await getDocs(query(collection(db, PROPERTY_TYPE_COL), where('label', '==', trimmed)));
+  if (!snap.empty) return trimmed;
+
+  await addDoc(collection(db, PROPERTY_TYPE_COL), { label: trimmed, dateAdded: serverTimestamp() });
+  return trimmed;
+}
+
+export async function fetchUnitTypes() {
+  const q = query(collection(db, UNIT_TYPE_COL), orderBy('label', 'asc'));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    await Promise.all(DEFAULT_UNIT_TYPES.map(label => addDoc(collection(db, UNIT_TYPE_COL), { label, dateAdded: serverTimestamp() })));
+    return DEFAULT_UNIT_TYPES;
+  }
+
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).map(item => item.label);
+}
+
+export async function addUnitType(label) {
+  const trimmed = label.trim();
+  if (!trimmed) return null;
+
+  const snap = await getDocs(query(collection(db, UNIT_TYPE_COL), where('label', '==', trimmed)));
+  if (!snap.empty) return trimmed;
+
+  await addDoc(collection(db, UNIT_TYPE_COL), { label: trimmed, dateAdded: serverTimestamp() });
+  return trimmed;
+}
+
+export async function fetchProfile() {
+  const snap = await getDocs(collection(db, PROFILE_COL));
+  if (snap.empty) {
+    const ref = await addDoc(collection(db, PROFILE_COL), { ...DEFAULT_PROFILE, dateAdded: serverTimestamp() });
+    return { id: ref.id, ...DEFAULT_PROFILE };
+  }
+
+  const doc = snap.docs[0];
+  return { id: doc.id, ...doc.data() };
+}
+
+export async function updateProfile(id, data) {
+  if (!id) {
+    const ref = await addDoc(collection(db, PROFILE_COL), { ...DEFAULT_PROFILE, ...data, dateAdded: serverTimestamp() });
+    return ref.id;
+  }
+
+  await updateDoc(doc(db, PROFILE_COL, id), data);
 }
 
 export async function addDeveloper(data) {

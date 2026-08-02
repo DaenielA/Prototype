@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { fetchListings, fetchDevelopers, seedIfEmpty } from './data/seed';
+import { fetchListings, fetchDevelopers, fetchProfile, fetchPropertyTypes, fetchUnitTypes, seedIfEmpty } from './data/seed';
 import Toast from './components/Toast';
 import PublicView from './components/PublicView';
 import AdminLogin from './components/AdminLogin';
@@ -10,6 +10,9 @@ import AdminDashboard from './components/AdminDashboard';
 export default function App() {
   const [listings, setListings] = useState([]);
   const [developers, setDevelopers] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [propertyTypes, setPropertyTypes] = useState([]);
+  const [unitTypes, setUnitTypes] = useState([]);
   const [view, setView] = useState('public');
   const [toasts, setToasts] = useState([]);
   const [ready, setReady] = useState(false);
@@ -26,9 +29,18 @@ export default function App() {
   const loadListings = useCallback(async () => {
     try {
       await seedIfEmpty();
-      const [data, devs] = await Promise.all([fetchListings(), fetchDevelopers()]);
+      const [data, devs, currentProfile, types, propertyTypeOptions] = await Promise.all([
+        fetchListings(),
+        fetchDevelopers(),
+        fetchProfile(),
+        fetchUnitTypes(),
+        fetchPropertyTypes(),
+      ]);
       setListings(data);
       setDevelopers(devs);
+      setProfile(currentProfile);
+      setUnitTypes(types);
+      setPropertyTypes(propertyTypeOptions);
     } catch (e) {
       console.error('Listings error:', e);
       addToast('Failed to load listings.', 'error');
@@ -72,7 +84,7 @@ export default function App() {
   return (
     <>
       {view === 'public' && (
-        <PublicView listings={listings} developers={developers} onAdminClick={() => setView('login')} addToast={addToast} />
+        <PublicView listings={listings} developers={developers} profile={profile} onAdminClick={() => setView('login')} addToast={addToast} />
       )}
       {view === 'login' && (
         <AdminLogin onLogin={() => setView('admin')} onBack={() => setView('public')} addToast={addToast} />
@@ -81,6 +93,9 @@ export default function App() {
         <AdminDashboard
           listings={listings}
           developers={developers}
+          profile={profile}
+          propertyTypes={propertyTypes}
+          unitTypes={unitTypes}
           onLogout={handleLogout}
           addToast={addToast}
           reloadListings={loadListings}

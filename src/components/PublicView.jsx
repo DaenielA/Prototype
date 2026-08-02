@@ -19,7 +19,7 @@ function ImageWithFallback({ src, alt, type, className, onClick }) {
 function PropertyCard({ property, onClick }) {
   return (
     <div onClick={() => onClick(property)}
-      className="bg-card border border-white/10 rounded-2xl overflow-hidden cursor-pointer group hover:-translate-y-1 hover:border-gold/40 transition-all duration-300">
+      className="bg-card/80 border border-white/10 rounded-[28px] overflow-hidden cursor-pointer group hover:-translate-y-1.5 hover:border-gold/40 hover:shadow-[0_20px_60px_rgba(0,0,0,0.35)] transition-all duration-300 backdrop-blur-sm">
       <div className="relative aspect-[4/3] overflow-hidden">
         <ImageWithFallback
           src={property.images?.[0]}
@@ -27,25 +27,26 @@ function PropertyCard({ property, onClick }) {
           type={property.type}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <span className="absolute top-3 left-3 bg-gold text-navy text-xs font-semibold px-2 py-1 rounded-full">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        <span className="absolute top-3 left-3 bg-gold text-navy text-[11px] font-semibold px-3 py-1 rounded-full shadow-lg">
           {property.type}
         </span>
-        <span className={`absolute top-3 right-3 text-xs font-semibold px-2 py-1 rounded-full
-          ${property.status === 'For Sale' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}>
+        <span className={`absolute top-3 right-3 text-[11px] font-semibold px-3 py-1 rounded-full border ${property.status === 'For Sale' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
           {property.status}
         </span>
       </div>
       <div className="p-4">
-        <h3 className="font-serif text-primary font-semibold text-base leading-snug mb-1 line-clamp-2">{property.title}</h3>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h3 className="font-serif text-primary font-semibold text-lg leading-snug line-clamp-2">{property.title}</h3>
+        </div>
         <div className="flex items-center gap-1 text-muted text-xs mb-3">
           <MapPin size={12} /><span>{property.location}</span>
         </div>
-        <p className="text-gold font-semibold text-lg mb-3">{formatPrice(property.price, property.status)}</p>
-        <div className="flex items-center gap-3 text-muted text-xs border-t border-white/10 pt-3">
+        <p className="text-gold font-semibold text-xl mb-3">{formatPrice(property.price, property.status)}</p>
+        <div className="grid grid-cols-3 gap-2 text-muted text-xs border-t border-white/10 pt-3">
           {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={12} />{property.bedrooms}</span>}
           {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={12} />{property.bathrooms}</span>}
-          {property.floorArea > 0 && <span className="flex items-center gap-1"><Maximize2 size={12} />{property.floorArea} sqm</span>}
-          {property.lotArea > 0 && !property.floorArea && <span className="flex items-center gap-1"><Maximize2 size={12} />{property.lotArea} sqm lot</span>}
+          {(property.floorArea > 0 || property.lotArea > 0) && <span className="flex items-center gap-1"><Maximize2 size={12} />{property.floorArea || property.lotArea} sqm</span>}
         </div>
       </div>
     </div>
@@ -170,6 +171,7 @@ function PropertyModal({ property, onClose, addToast }) {
           {/* Specs Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
             {[
+              property.unitType && ['Unit Type', property.unitType],
               property.bedrooms > 0 && ['Bedrooms', property.bedrooms],
               property.bathrooms > 0 && ['Bathrooms', property.bathrooms],
               property.floorArea > 0 && ['Floor Area', `${property.floorArea} sqm`],
@@ -269,16 +271,30 @@ function PropertyModal({ property, onClose, addToast }) {
   );
 }
 
-export default function PublicView({ listings, developers, onAdminClick, addToast }) {
+export default function PublicView({ listings, developers, profile, onAdminClick, addToast }) {
   const [filters, setFilters] = useState({ type: 'All', location: '', minPrice: '', maxPrice: '' });
   const [selected, setSelected] = useState(null);
   const [activeDev, setActiveDev] = useState(null);
+  const [publicTab, setPublicTab] = useState('home');
+  const [listingSection, setListingSection] = useState('brokerage');
 
   const visible = listings.filter(p => p.visible);
-  const independentListings = visible.filter(p => !p.developerId || p.listingType === 'independent');
-  const devListings = activeDev ? visible.filter(p => p.developerId === activeDev) : [];
+  const brokerageListings = visible.filter(p => p.listingType !== 'developer' && p.listingType !== 'memorial' && !p.developerId);
+  const developerListings = visible.filter(p => p.developerId || p.listingType === 'developer');
+  const memorialListings = visible.filter(p => p.listingType === 'memorial');
+  const featuredStats = [
+    { label: 'Premium Listings', value: visible.length },
+    { label: 'Developer Pipelines', value: developers.length },
+    { label: 'Memorial Lots', value: memorialListings.length },
+  ];
 
-  const filtered = (activeDev ? devListings : independentListings).filter(p => {
+  const currentListings = listingSection === 'developer'
+    ? (activeDev ? developerListings.filter(p => p.developerId === activeDev) : [])
+    : listingSection === 'brokerage'
+      ? brokerageListings
+      : memorialListings;
+
+  const filtered = currentListings.filter(p => {
     if (filters.type !== 'All' && p.type !== filters.type) return false;
     if (filters.location && !p.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
     if (filters.minPrice && p.price < Number(filters.minPrice)) return false;
@@ -291,17 +307,17 @@ export default function PublicView({ listings, developers, onAdminClick, addToas
   return (
     <div className="min-h-screen bg-navy font-sans">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-30 bg-navy/90 backdrop-blur-md border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-30 bg-navy/80 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/Logo.png" alt="Logo" className="h-14 w-14 object-contain rounded-full border-2 border-primary bg-white p-0.5" />
-            <span className="font-serif font-bold text-primary text-lg hidden sm:inline">Homes By Juvy</span>
+            <span className="font-serif font-bold text-primary text-lg hidden sm:inline">{profile?.name || 'Homes By Juvy'}</span>
           </div>
           <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-6 text-sm text-muted">
-              <a href="#home" className="hover:text-primary transition-colors">Home</a>
-              <a href="#listings" className="hover:text-primary transition-colors">Listings</a>
-              <a href="#footer" className="hover:text-primary transition-colors">Contact</a>
+            <div className="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1 text-sm text-muted">
+              <button onClick={() => setPublicTab('home')} className={`px-3 py-1.5 rounded-full transition-colors ${publicTab === 'home' ? 'bg-gold/15 text-gold' : 'hover:text-primary'}`}>Home</button>
+              <button onClick={() => setPublicTab('listings')} className={`px-3 py-1.5 rounded-full transition-colors ${publicTab === 'listings' ? 'bg-gold/15 text-gold' : 'hover:text-primary'}`}>Listings</button>
+              <a href="#footer" className="px-3 py-1.5 rounded-full hover:text-primary transition-colors">Contact</a>
             </div>
             <button onClick={onAdminClick}
               className="text-xs border border-gold/40 text-gold px-3 py-1.5 rounded-lg hover:bg-gold/10 transition-colors">
@@ -311,26 +327,57 @@ export default function PublicView({ listings, developers, onAdminClick, addToas
         </div>
       </nav>
 
-      {/* Hero */}
-      <section id="home" className="relative pt-16 min-h-[90vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-navy via-card to-navy" />
-        <div className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: 'url(/Juvy.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/60 to-transparent" />
+      {publicTab === 'home' && (
+        <section id="home" className="relative pt-8 min-h-[70vh] flex items-center overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-navy via-card to-navy" />
+          <div className="absolute inset-0 opacity-20"
+            style={{ backgroundImage: 'url(/Juvy.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+          <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/60 to-transparent" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 w-full">
-          <div className="max-w-2xl">
-            <p className="text-gold text-sm font-semibold tracking-widest uppercase mb-4">Premium Properties in Bohol</p>
-            <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl text-primary font-bold leading-tight mb-6">
-              Find Your<br /><span className="text-gold">Perfect Home</span>
-            </h1>
-            <p className="text-muted text-lg mb-10 leading-relaxed">
-              Discover curated luxury properties across Bohol's most sought-after locations. Your dream home is just a search away.
-            </p>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 items-end">
+              <div className="max-w-2xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <img src={profile?.picture || '/Juvy.jpg'} alt={profile?.name || 'Agent'} className="w-14 h-14 rounded-full object-cover border-2 border-gold/40" />
+                  <div>
+                    <p className="text-gold text-sm font-semibold tracking-widest uppercase">Premium Properties in Bohol</p>
+                    <p className="text-primary font-serif text-lg font-semibold">{profile?.name || 'Juvy C. Espina'}</p>
+                  </div>
+                </div>
+                <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl text-primary font-bold leading-tight mb-6">
+                  Find Your<br /><span className="text-gold">Perfect Home</span>
+                </h1>
+                <p className="text-muted text-lg mb-10 leading-relaxed max-w-xl">
+                  {profile?.bio || 'Discover curated luxury properties across Bohol\'s most sought-after locations. Your dream home is just a search away.'}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button onClick={() => setPublicTab('listings')} className="bg-gold text-navy font-semibold px-5 py-3 rounded-xl hover:bg-yellow-400 transition-colors">Explore Listings</button>
+                  <a href="#footer" className="border border-white/15 text-primary px-5 py-3 rounded-xl hover:border-gold/40 hover:text-gold transition-colors">Contact Agent</a>
+                </div>
+              </div>
+
+              <div className="bg-card/75 border border-white/10 rounded-[28px] p-4 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+                <div className="grid grid-cols-3 gap-3">
+                  {featuredStats.map(stat => (
+                    <div key={stat.label} className="bg-navy/60 border border-white/10 rounded-2xl p-3 text-center">
+                      <p className="text-gold text-xl font-bold">{stat.value}</p>
+                      <p className="text-muted text-[11px] mt-1">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 rounded-2xl bg-navy/70 border border-gold/20 p-4">
+                  <p className="text-gold text-xs uppercase tracking-[0.3em] mb-2">Signature Service</p>
+                  <p className="text-primary text-sm leading-relaxed">Luxury, clarity, and a smooth buying experience — from first search to final paperwork.</p>
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
+      )}
 
-          {/* Search Bar */}
-          <div className="bg-card/90 backdrop-blur border border-white/10 rounded-2xl p-4 sm:p-6 max-w-4xl">
+      {publicTab === 'listings' && (
+        <section id="listings" className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
+          <div className="sticky top-20 z-10 bg-card/80 backdrop-blur-xl border border-white/10 rounded-[26px] p-4 sm:p-6 mb-6 shadow-[0_18px_50px_rgba(0,0,0,0.25)]">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <select value={filters.type} onChange={e => setF('type', e.target.value)}
                 className="bg-navy border border-white/10 rounded-xl px-4 py-3 text-primary text-sm focus:outline-none focus:border-gold transition-colors">
@@ -348,84 +395,78 @@ export default function PublicView({ listings, developers, onAdminClick, addToas
               <input type="number" placeholder="Max Price (₱)" value={filters.maxPrice} onChange={e => setF('maxPrice', e.target.value)}
                 className="bg-navy border border-white/10 rounded-xl px-4 py-3 text-primary text-sm placeholder:text-muted focus:outline-none focus:border-gold transition-colors" />
             </div>
-            <button onClick={() => {}} className="mt-3 w-full sm:w-auto bg-gold text-navy font-semibold px-8 py-3 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
-              <Search size={16} /> Search Properties
-            </button>
-            {(filters.type !== 'All' || filters.location || filters.minPrice || filters.maxPrice) && (
-              <button onClick={() => setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' })}
-                className="mt-3 w-full sm:w-auto border border-white/20 text-muted px-8 py-3 rounded-xl hover:text-primary hover:border-white/40 transition-colors flex items-center gap-2 text-sm">
-                <X size={15} /> Clear Filters
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button onClick={() => setPublicTab('listings')} className="w-full sm:w-auto bg-gold text-navy font-semibold px-8 py-3 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
+                <Search size={16} /> Search Properties
               </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Developers Section */}
-      {developers.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-4">
-          <div className="mb-6">
-            <p className="text-gold text-xs font-semibold tracking-widest uppercase mb-2">Developers</p>
-            <h2 className="font-serif text-3xl sm:text-4xl text-primary font-bold">Our Developers</h2>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            {developers.map(d => {
-              const count = visible.filter(p => p.developerId === d.id).length;
-              const isActive = activeDev === d.id;
-              return (
-                <button key={d.id} onClick={() => { setActiveDev(isActive ? null : d.id); setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' }); }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all ${
-                    isActive ? 'bg-gold/10 border-gold/40 text-gold' : 'bg-card border-white/10 text-primary hover:border-gold/30'
-                  }`}>
-                  {d.logo
-                    ? <img src={d.logo} alt={d.name} className="w-10 h-8 object-contain" />
-                    : <Building2 size={20} className="text-muted" />}
-                  <div className="text-left">
-                    <p className="text-sm font-semibold leading-tight">{d.name}</p>
-                    <p className="text-xs text-muted">{count} propert{count !== 1 ? 'ies' : 'y'}</p>
-                  </div>
+              {(filters.type !== 'All' || filters.location || filters.minPrice || filters.maxPrice) && (
+                <button onClick={() => setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' })}
+                  className="w-full sm:w-auto border border-white/20 text-muted px-8 py-3 rounded-xl hover:text-primary hover:border-white/40 transition-colors flex items-center gap-2 text-sm">
+                  <X size={15} /> Clear Filters
                 </button>
-              );
-            })}
+              )}
+            </div>
           </div>
-          {activeDev && (
-            <div className="mt-3">
-              <button onClick={() => setActiveDev(null)} className="flex items-center gap-1 text-muted text-xs hover:text-primary transition-colors">
-                <X size={12} /> Clear developer filter
-              </button>
+
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                ['brokerage', 'Brokerage Listings'],
+                ['developer', 'Developer Listings'],
+                ['memorial', 'Memorial Lots'],
+              ].map(([key, label]) => (
+                <button key={key} onClick={() => { setListingSection(key); if (key !== 'developer') setActiveDev(null); }} className={`px-4 py-2 rounded-full border text-sm transition-colors ${listingSection === key ? 'bg-gold/10 border-gold/40 text-gold' : 'border-white/10 text-muted hover:text-primary'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {listingSection === 'developer' && developers.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-8">
+                {developers.map(d => {
+                  const count = visible.filter(p => p.developerId === d.id).length;
+                  const isActive = activeDev === d.id;
+                  return (
+                    <button key={d.id} onClick={() => { setActiveDev(isActive ? null : d.id); setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' }); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all ${isActive ? 'bg-gold/10 border-gold/40 text-gold' : 'bg-card border-white/10 text-primary hover:border-gold/30'}`}>
+                      {d.logo ? <img src={d.logo} alt={d.name} className="w-10 h-8 object-contain" /> : <Building2 size={20} className="text-muted" />}
+                      <div className="text-left">
+                        <p className="text-sm font-semibold leading-tight">{d.name}</p>
+                        <p className="text-xs text-muted">{count} propert{count !== 1 ? 'ies' : 'y'}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <p className="text-gold text-xs font-semibold tracking-widest uppercase mb-2">Portfolio</p>
+                <h2 className="font-serif text-3xl sm:text-4xl text-primary font-bold">
+                  {listingSection === 'developer' ? (activeDev ? developers.find(d => d.id === activeDev)?.name + ' Properties' : 'Developer Listings') : listingSection === 'memorial' ? 'Memorial Lots' : 'Brokerage Listings'}
+                </h2>
+              </div>
+              <span className="text-muted text-sm">{filtered.length} listing{filtered.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="text-center py-20 text-muted">
+              <Home size={48} className="mx-auto mb-4 opacity-30" />
+              <p className="text-lg">No properties match your search.</p>
+              <button onClick={() => setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' })}
+                className="mt-4 text-gold text-sm hover:underline">Clear filters</button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.map(p => <PropertyCard key={p.id} property={p} onClick={setSelected} />)}
             </div>
           )}
         </section>
       )}
 
-      {/* Listings */}
-      <section id="listings" className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <p className="text-gold text-xs font-semibold tracking-widest uppercase mb-2">Portfolio</p>
-            <h2 className="font-serif text-3xl sm:text-4xl text-primary font-bold">
-              {activeDev ? developers.find(d => d.id === activeDev)?.name + ' Properties' : 'Independent Properties'}
-            </h2>
-          </div>
-          <span className="text-muted text-sm">{filtered.length} listing{filtered.length !== 1 ? 's' : ''}</span>
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="text-center py-20 text-muted">
-            <Home size={48} className="mx-auto mb-4 opacity-30" />
-            <p className="text-lg">No properties match your search.</p>
-            <button onClick={() => setFilters({ type: 'All', location: '', minPrice: '', maxPrice: '' })}
-              className="mt-4 text-gold text-sm hover:underline">Clear filters</button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map(p => <PropertyCard key={p.id} property={p} onClick={setSelected} />)}
-          </div>
-        )}
-      </section>
-
       {/* Footer */}
-      <footer id="footer" className="border-t border-white/10 bg-card">
+      <footer id="footer" className="border-t border-white/10 bg-card/70 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
             <div>
@@ -435,17 +476,15 @@ export default function PublicView({ listings, developers, onAdminClick, addToas
             <div>
               <h4 className="text-primary font-semibold text-sm mb-3">Contact</h4>
               <div className="flex flex-col gap-2 text-muted text-sm">
-                <span>Juvy C. Espina</span>
+                <span>Juvy E. Amolat,REB</span>
                 <a href="tel:+639123456789" className="hover:text-gold transition-colors">+63175902973</a>
-                <a href="mailto:juvy@luxerealty.com" className="hover:text-gold transition-colors">juvy@luxerealty.com</a>
+                <a href="mailto:juvy@luxerealty.com" className="hover:text-gold transition-colors">juvyespina@gmail.com</a>
               </div>
             </div>
             <div>
               <h4 className="text-primary font-semibold text-sm mb-3">Follow Us</h4>
               <div className="flex gap-3">
-                {['Facebook', 'Instagram', 'LinkedIn'].map(s => (
-                  <a key={s} href="#" className="text-muted text-xs border border-white/10 px-3 py-1.5 rounded-lg hover:border-gold/40 hover:text-gold transition-colors">{s}</a>
-                ))}
+                <a href="https://www.facebook.com/juvy.espina.realty.listings" target="_blank" rel="noreferrer" className="text-muted text-xs border border-white/10 px-3 py-1.5 rounded-lg hover:border-gold/40 hover:text-gold transition-colors">Facebook</a>
               </div>
             </div>
           </div>

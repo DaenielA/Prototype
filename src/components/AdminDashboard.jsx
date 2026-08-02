@@ -2,19 +2,20 @@
 import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, List, PlusCircle, LogOut, Bell, Trash2, Pencil, Eye, EyeOff,
-  TrendingUp, Home, Building2, Layers, X, Check, Menu, Upload
+  TrendingUp, Home, Building2, Layers, X, Check, Menu, Upload, UserCircle
 } from 'lucide-react';
-import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo, fetchInquiries, markInquiryRead, addDeveloper, updateDeveloper, deleteDeveloper } from '../data/seed';
+import { formatPrice, addListing, updateListing, deleteListing, uploadImage, uploadVideo, fetchInquiries, markInquiryRead, addDeveloper, updateDeveloper, deleteDeveloper, updateProfile, addPropertyType, addUnitType } from '../data/seed';
 
 const EMPTY_FORM = {
   title: '', type: 'House', status: 'For Sale', price: '', location: '', address: '',
   bedrooms: '', bathrooms: '', floorArea: '', lotArea: '', parking: '', furnishing: 'Bare',
   yearBuilt: '', description: '', amenities: [], images: [], videos: [],
   agentName: 'Juvy C. Espina', agentPhone: '+63 912 345 6789', agentEmail: 'juvy@luxerealty.com',
-  visible: true, listingType: 'independent', developerId: '',
+  visible: true, listingType: 'brokerage', developerId: '',
 };
 
 const EMPTY_DEV_FORM = { name: '', description: '', logo: '' };
+const EMPTY_PROFILE_FORM = { name: '', picture: '', bio: '' };
 
 
 function StatCard({ icon, label, value, color }) {
@@ -101,11 +102,78 @@ function DeveloperForm({ initial, onSave, onCancel, addToast }) {
   );
 }
 
-function PropertyForm({ initial, onSave, onCancel, addToast, developers }) {
+function ProfileForm({ initial, onSave, onCancel, addToast }) {
+  const [form, setForm] = useState(initial ? { ...EMPTY_PROFILE_FORM, ...initial } : EMPTY_PROFILE_FORM);
+  const [uploading, setUploading] = useState(false);
+
+  async function handlePictureUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setForm(f => ({ ...f, picture: url }));
+    } catch {
+      addToast('Profile photo upload failed.', 'error');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    await onSave(form);
+  }
+
+  const inputCls = "w-full bg-navy border border-white/10 rounded-xl px-4 py-2.5 text-primary text-sm placeholder:text-muted focus:outline-none focus:border-gold transition-colors";
+  const labelCls = "text-muted text-xs mb-1 block";
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-2xl flex flex-col gap-4">
+      <div>
+        <label className={labelCls}>Agent / Broker Name *</label>
+        <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
+      </div>
+      <div>
+        <label className={labelCls}>Profile Picture</label>
+        {form.picture && <img src={form.picture} alt="Profile" className="w-24 h-24 rounded-full object-cover border border-white/10 mb-3" />}
+        <label className="flex items-center gap-3 cursor-pointer border border-dashed border-white/20 hover:border-gold/50 rounded-xl px-4 py-3 transition-colors">
+          <input type="file" accept="image/*" className="hidden" onChange={handlePictureUpload} disabled={uploading} />
+          {uploading ? <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" /> : <Upload size={16} className="text-muted" />}
+          <span className="text-muted text-sm">{uploading ? 'Uploading...' : 'Upload profile photo'}</span>
+        </label>
+      </div>
+      <div>
+        <label className={labelCls}>Bio / Public Description</label>
+        <textarea rows={4} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="Short bio shown on the public view..." className={`${inputCls} resize-none`} />
+      </div>
+      <div className="flex gap-3 mt-2">
+        <button type="submit" className="bg-gold text-navy font-semibold px-6 py-2.5 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
+          <Check size={16} /> Save Profile
+        </button>
+        <button type="button" onClick={onCancel} className="border border-white/10 text-muted px-6 py-2.5 rounded-xl hover:text-primary transition-colors text-sm">Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function PropertyForm({ initial, onSave, onCancel, addToast, developers, propertyTypes, unitTypes }) {
   const [form, setForm] = useState(initial ? { ...EMPTY_FORM, ...initial, images: initial.images || [], videos: initial.videos || [] } : EMPTY_FORM);
+  const [availablePropertyTypes, setAvailablePropertyTypes] = useState(propertyTypes?.length ? propertyTypes : ['House', 'Condo', 'House & Lot', 'Lot Only', 'Commercial']);
+  const [availableUnitTypes, setAvailableUnitTypes] = useState(unitTypes || []);
   const [amenityInput, setAmenityInput] = useState('');
+  const [propertyTypeInput, setPropertyTypeInput] = useState('');
+  const [unitTypeInput, setUnitTypeInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const ADD_PROPERTY_TYPE_OPTION = '__add_property_type';
+  const ADD_UNIT_TYPE_OPTION = '__add_unit_type';
+
+  useEffect(() => {
+    if (Array.isArray(propertyTypes) && propertyTypes.length) {
+      setAvailablePropertyTypes(propertyTypes);
+    }
+  }, [propertyTypes]);
 
   function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
@@ -168,9 +236,38 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers }) {
       yearBuilt: Number(form.yearBuilt) || 0,
       images: form.images.filter(Boolean),
       videos: (form.videos || []).filter(Boolean),
+      unitType: form.unitType || '',
       views: form.views || 0,
     };
     await onSave(listing);
+  }
+
+  async function addPropertyTypeOption() {
+    const trimmed = propertyTypeInput.trim();
+    if (!trimmed) return;
+    try {
+      await addPropertyType(trimmed);
+      setAvailablePropertyTypes(prev => [...new Set([...prev, trimmed])]);
+      setF('type', trimmed);
+      setPropertyTypeInput('');
+      addToast('Property type saved.', 'success');
+    } catch {
+      addToast('Failed to save property type.', 'error');
+    }
+  }
+
+  async function addUnitTypeOption() {
+    const trimmed = unitTypeInput.trim();
+    if (!trimmed) return;
+    try {
+      await addUnitType(trimmed);
+      setAvailableUnitTypes(prev => [...new Set([...prev, trimmed])]);
+      setForm(f => ({ ...f, unitType: trimmed }));
+      setUnitTypeInput('');
+      addToast('Unit type saved.', 'success');
+    } catch {
+      addToast('Failed to save unit type.', 'error');
+    }
   }
 
   const inputCls = "w-full bg-navy border border-white/10 rounded-xl px-4 py-2.5 text-primary text-sm placeholder:text-muted focus:outline-none focus:border-gold transition-colors";
@@ -181,11 +278,15 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <label className={labelCls}>Listing Category</label>
-          <div className="flex gap-4 mt-1 mb-1">
-            {[['independent', 'Independent Property'], ['developer', 'Under a Developer']].map(([val, label]) => (
+          <div className="flex flex-wrap gap-4 mt-1 mb-1">
+            {[
+              ['brokerage', 'Brokerage Listing'],
+              ['developer', 'Under a Developer'],
+              ['memorial', 'Memorial Lot'],
+            ].map(([val, label]) => (
               <label key={val} className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="listingType" value={val} checked={(form.listingType || 'independent') === val}
-                  onChange={() => { setF('listingType', val); if (val === 'independent') setF('developerId', ''); }}
+                <input type="radio" name="listingType" value={val} checked={(form.listingType || 'brokerage') === val}
+                  onChange={() => { setF('listingType', val); if (val !== 'developer') setF('developerId', ''); }}
                   className="accent-gold" />
                 <span className="text-primary text-sm">{label}</span>
               </label>
@@ -210,10 +311,41 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers }) {
 
         <div>
           <label className={labelCls}>Property Type</label>
-          <select value={form.type} onChange={e => setF('type', e.target.value)} className={inputCls}>
-            {['House', 'Condo', 'House & Lot', 'Lot Only', 'Commercial'].map(t => <option key={t}>{t}</option>)}
-          </select>
+          <div className="flex flex-col gap-2">
+            <select value={form.type} onChange={e => setF('type', e.target.value)} className={inputCls}>
+              {(availablePropertyTypes || []).map(type => <option key={type} value={type}>{type}</option>)}
+              <option value={ADD_PROPERTY_TYPE_OPTION}>Add Property Type</option>
+            </select>
+            {form.type === ADD_PROPERTY_TYPE_OPTION && (
+              <div className="flex gap-2">
+                <input value={propertyTypeInput} onChange={e => setPropertyTypeInput(e.target.value)} placeholder="Add property type" className={`${inputCls} flex-1`} />
+                <button type="button" onClick={addPropertyTypeOption} className="bg-gold text-navy px-3 rounded-xl text-sm font-semibold">Add</button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {(form.type === 'Condo' || form.type === 'House & Lot') && (
+          <div>
+            <label className={labelCls}>Unit Type</label>
+            <div className="flex flex-col gap-2">
+              <select value={form.unitType || ''} onChange={e => {
+                const nextValue = e.target.value;
+                setF('unitType', nextValue);
+              }} className={inputCls}>
+                <option value="">-- Select Unit Type --</option>
+                {(availableUnitTypes || []).map(type => <option key={type} value={type}>{type}</option>)}
+                <option value={ADD_UNIT_TYPE_OPTION}>Add Unit Type</option>
+              </select>
+              {form.unitType === ADD_UNIT_TYPE_OPTION && (
+                <div className="flex gap-2">
+                  <input value={unitTypeInput} onChange={e => setUnitTypeInput(e.target.value)} placeholder="Add unit type" className={`${inputCls} flex-1`} />
+                  <button type="button" onClick={addUnitTypeOption} className="bg-gold text-navy px-3 rounded-xl text-sm font-semibold">Add</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div>
           <label className={labelCls}>Listing Status</label>
@@ -367,7 +499,7 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers }) {
   );
 }
 
-export default function AdminDashboard({ listings, developers, onLogout, addToast, reloadListings }) {
+export default function AdminDashboard({ listings, developers, profile, propertyTypes, unitTypes, onLogout, addToast, reloadListings }) {
   const [view, setView] = useState('overview');
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -376,6 +508,7 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
   const [showInquiries, setShowInquiries] = useState(false);
   const [devEditTarget, setDevEditTarget] = useState(null);
   const [devDeleteTarget, setDevDeleteTarget] = useState(null);
+  const [listingTab, setListingTab] = useState('brokerage');
 
   useEffect(() => {
     fetchInquiries().then(setInquiries).catch(() => {});
@@ -392,11 +525,17 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
 
   async function handleSave(listing) {
     try {
-      if (listing.id && listings.find(l => l.id === listing.id)) {
-        const { id, ...data } = listing;
+      const normalized = {
+        ...listing,
+        listingType: listing.listingType === 'independent' ? 'brokerage' : (listing.listingType || 'brokerage'),
+        developerId: listing.listingType === 'developer' ? listing.developerId : '',
+      };
+
+      if (normalized.id && listings.find(l => l.id === normalized.id)) {
+        const { id, ...data } = normalized;
         await updateListing(id, data);
       } else {
-        await addListing(listing);
+        await addListing(normalized);
       }
       await reloadListings();
       addToast('Property saved successfully!', 'success');
@@ -433,6 +572,10 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
   const forSale = listings.filter(l => l.status === 'For Sale').length;
   const forRent = listings.filter(l => l.status === 'For Rent').length;
   const recent = [...listings].sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded)).slice(0, 5);
+  const brokerageListings = listings.filter(l => l.listingType !== 'developer' && l.listingType !== 'memorial' && !l.developerId);
+  const developerListings = listings.filter(l => l.listingType === 'developer' || l.developerId);
+  const memorialListings = listings.filter(l => l.listingType === 'memorial');
+  const currentListingSet = listingTab === 'brokerage' ? brokerageListings : listingTab === 'developer' ? developerListings : memorialListings;
 
   async function handleDevSave(data) {
     try {
@@ -462,6 +605,17 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
     }
   }
 
+  async function handleProfileSave(data) {
+    try {
+      await updateProfile(profile?.id, data);
+      await reloadListings();
+      addToast('Profile updated successfully!', 'success');
+      setView('profile');
+    } catch {
+      addToast('Failed to update profile.', 'error');
+    }
+  }
+
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'listings', label: 'My Listings', icon: List },
@@ -469,7 +623,7 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
     { id: 'add', label: 'Add Property', icon: PlusCircle },
   ];
 
-  const pageTitles = { overview: 'Overview', listings: 'My Listings', add: 'Add Property', edit: 'Edit Property', developers: 'Developers', addDev: 'Add Developer', editDev: 'Edit Developer' };
+  const pageTitles = { overview: 'Overview', listings: 'My Listings', add: 'Add Property', edit: 'Edit Property', developers: 'Developers', addDev: 'Add Developer', editDev: 'Edit Developer', profile: 'Profile' };
 
   function NavItem({ item }) {
     const Icon = item.icon;
@@ -495,13 +649,13 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
             <p className="text-muted text-xs">Admin Portal</p>
           </div>
         </div>
-        <div className="p-4 border-b border-white/10 flex items-center gap-3">
-          <img src="/Juvy.jpg" alt="Juvy C. Espina" className="w-9 h-9 rounded-full object-cover border-2 border-gold/40" />
+        <button type="button" onClick={() => { setView('profile'); setSidebarOpen(false); }} className="p-4 border-b border-white/10 flex items-center gap-3 text-left w-full hover:bg-white/5 transition-colors">
+          <img src={profile?.picture || '/Juvy.jpg'} alt={profile?.name || 'Agent'} className="w-9 h-9 rounded-full object-cover border-2 border-gold/40" />
           <div>
-            <p className="text-primary text-sm font-semibold">Juvy E. Amolat</p>
+            <p className="text-primary text-sm font-semibold">{profile?.name || 'Juvy C. Espina'}</p>
             <p className="text-muted text-xs">Agent</p>
           </div>
-        </div>
+        </button>
         <nav className="flex-1 p-4 flex flex-col gap-1">
           {navItems.map(item => <NavItem key={item.id} item={item} />)}
         </nav>
@@ -583,7 +737,18 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
           {/* My Listings */}
           {view === 'listings' && (
             <div>
-              <div className="flex justify-end mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ['brokerage', 'Brokerage Listings'],
+                    ['developer', 'Developer Listings'],
+                    ['memorial', 'Memorial Lots'],
+                  ].map(([key, label]) => (
+                    <button key={key} onClick={() => setListingTab(key)} className={`px-4 py-2 rounded-xl border text-sm transition-colors ${listingTab === key ? 'bg-gold/10 border-gold/40 text-gold' : 'border-white/10 text-muted hover:text-primary'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <button onClick={() => setView('add')} className="bg-gold text-navy text-sm font-semibold px-4 py-2 rounded-xl hover:bg-yellow-400 transition-colors flex items-center gap-2">
                   <PlusCircle size={15} /> Add Property
                 </button>
@@ -599,10 +764,10 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
                       </tr>
                     </thead>
                     <tbody>
-                      {listings.length === 0 && (
-                        <tr><td colSpan={6} className="text-center text-muted py-10">No listings yet.</td></tr>
+                      {currentListingSet.length === 0 && (
+                        <tr><td colSpan={6} className="text-center text-muted py-10">No {listingTab === 'brokerage' ? 'brokerage listings' : listingTab === 'developer' ? 'developer listings' : 'memorial lots'} yet.</td></tr>
                       )}
-                      {listings.map(p => (
+                      {currentListingSet.map(p => (
                         <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
@@ -651,14 +816,14 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
           {/* Add Property */}
           {view === 'add' && (
             <div className="bg-card border border-white/10 rounded-2xl p-6">
-              <PropertyForm onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} developers={developers} />
+              <PropertyForm onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} developers={developers} propertyTypes={propertyTypes} unitTypes={unitTypes} />
             </div>
           )}
 
           {/* Edit Property */}
           {view === 'edit' && editTarget && (
             <div className="bg-card border border-white/10 rounded-2xl p-6">
-              <PropertyForm initial={editTarget} onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} developers={developers} />
+              <PropertyForm initial={editTarget} onSave={handleSave} onCancel={() => setView('listings')} addToast={addToast} developers={developers} propertyTypes={propertyTypes} unitTypes={unitTypes} />
             </div>
           )}
 
@@ -718,6 +883,12 @@ export default function AdminDashboard({ listings, developers, onLogout, addToas
           {view === 'editDev' && devEditTarget && (
             <div className="bg-card border border-white/10 rounded-2xl p-6">
               <DeveloperForm initial={devEditTarget} onSave={handleDevSave} onCancel={() => setView('developers')} addToast={addToast} />
+            </div>
+          )}
+
+          {view === 'profile' && (
+            <div className="bg-card border border-white/10 rounded-2xl p-6">
+              <ProfileForm initial={profile || EMPTY_PROFILE_FORM} onSave={handleProfileSave} onCancel={() => setView('overview')} addToast={addToast} />
             </div>
           )}
         </main>
