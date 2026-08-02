@@ -282,6 +282,7 @@ export default function PublicView({ listings, developers, profile, onAdminClick
   const brokerageListings = visible.filter(p => p.listingType !== 'developer' && p.listingType !== 'memorial' && !p.developerId);
   const developerListings = visible.filter(p => p.developerId || p.listingType === 'developer');
   const memorialListings = visible.filter(p => p.listingType === 'memorial');
+
   const featuredStats = [
     { label: 'Premium Listings', value: visible.length },
     { label: 'Developer Pipelines', value: developers.length },

@@ -159,7 +159,7 @@ function ProfileForm({ initial, onSave, onCancel, addToast }) {
 
 function PropertyForm({ initial, onSave, onCancel, addToast, developers, propertyTypes, unitTypes }) {
   const [form, setForm] = useState(initial ? { ...EMPTY_FORM, ...initial, images: initial.images || [], videos: initial.videos || [] } : EMPTY_FORM);
-  const [availablePropertyTypes, setAvailablePropertyTypes] = useState(propertyTypes?.length ? propertyTypes : ['House', 'Condo', 'House & Lot', 'Lot Only', 'Commercial']);
+  const [availablePropertyTypes, setAvailablePropertyTypes] = useState(propertyTypes?.length ? propertyTypes : ['House', 'Condo', 'House & Lot', 'Lot Only', 'Commercial', 'Memorial Lot']);
   const [availableUnitTypes, setAvailableUnitTypes] = useState(unitTypes || []);
   const [amenityInput, setAmenityInput] = useState('');
   const [propertyTypeInput, setPropertyTypeInput] = useState('');
@@ -174,6 +174,8 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers, propert
       setAvailablePropertyTypes(propertyTypes);
     }
   }, [propertyTypes]);
+
+  const isMemorial = form.listingType === 'memorial';
 
   function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
@@ -286,7 +288,17 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers, propert
             ].map(([val, label]) => (
               <label key={val} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="listingType" value={val} checked={(form.listingType || 'brokerage') === val}
-                  onChange={() => { setF('listingType', val); if (val !== 'developer') setF('developerId', ''); }}
+                  onChange={() => {
+                    setF('listingType', val);
+                    if (val === 'memorial') {
+                      setF('type', 'Memorial Lot');
+                      setF('unitType', '');
+                    } else if (val !== 'developer') {
+                      setF('developerId', '');
+                      setF('type', val === 'brokerage' ? (form.type === 'Memorial Lot' ? 'House' : form.type) : form.type);
+                    }
+                    if (val !== 'developer') setF('developerId', '');
+                  }}
                   className="accent-gold" />
                 <span className="text-primary text-sm">{label}</span>
               </label>
@@ -312,7 +324,7 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers, propert
         <div>
           <label className={labelCls}>Property Type</label>
           <div className="flex flex-col gap-2">
-            <select value={form.type} onChange={e => setF('type', e.target.value)} className={inputCls}>
+            <select value={form.type || (isMemorial ? 'Memorial Lot' : 'House')} onChange={e => setF('type', e.target.value)} className={inputCls}>
               {(availablePropertyTypes || []).map(type => <option key={type} value={type}>{type}</option>)}
               <option value={ADD_PROPERTY_TYPE_OPTION}>Add Property Type</option>
             </select>
@@ -374,19 +386,28 @@ function PropertyForm({ initial, onSave, onCancel, addToast, developers, propert
           <textarea rows={2} value={form.address} onChange={e => setF('address', e.target.value)} placeholder="Street, Subdivision, City, Province" className={`${inputCls} resize-none`} />
         </div>
 
-        {[['Bedrooms', 'bedrooms'], ['Bathrooms', 'bathrooms'], ['Floor Area (sqm)', 'floorArea'], ['Lot Area (sqm)', 'lotArea'], ['Parking Slots', 'parking'], ['Year Built', 'yearBuilt']].map(([label, key]) => (
+        {!isMemorial && [['Bedrooms', 'bedrooms'], ['Bathrooms', 'bathrooms'], ['Floor Area (sqm)', 'floorArea'], ['Parking Slots', 'parking'], ['Year Built', 'yearBuilt']].map(([label, key]) => (
           <div key={key}>
             <label className={labelCls}>{label}</label>
             <input type="number" value={form[key]} onChange={e => setF(key, e.target.value)} placeholder="0" className={inputCls} />
           </div>
         ))}
 
-        <div>
-          <label className={labelCls}>Furnishing</label>
-          <select value={form.furnishing} onChange={e => setF('furnishing', e.target.value)} className={inputCls}>
-            {['Bare', 'Semi-Furnished', 'Fully Furnished'].map(f => <option key={f}>{f}</option>)}
-          </select>
-        </div>
+        {(isMemorial || form.listingType === 'brokerage' || form.listingType === 'developer') && (
+          <div>
+            <label className={labelCls}>Lot Area (sqm)</label>
+            <input type="number" value={form.lotArea} onChange={e => setF('lotArea', e.target.value)} placeholder="0" className={inputCls} />
+          </div>
+        )}
+
+        {!isMemorial && (
+          <div>
+            <label className={labelCls}>Furnishing</label>
+            <select value={form.furnishing} onChange={e => setF('furnishing', e.target.value)} className={inputCls}>
+              {['Bare', 'Semi-Furnished', 'Fully Furnished'].map(f => <option key={f}>{f}</option>)}
+            </select>
+          </div>
+        )}
 
         <div className="sm:col-span-2">
           <label className={labelCls}>Description</label>
