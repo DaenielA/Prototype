@@ -16,6 +16,7 @@ export default function App() {
   const [view, setView] = useState('public');
   const [toasts, setToasts] = useState([]);
   const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const addToast = useCallback((message, type = 'success') => {
     const id = Date.now();
@@ -26,24 +27,35 @@ export default function App() {
     setToasts(t => t.filter(x => x.id !== id));
   }, []);
 
-  const loadListings = useCallback(async () => {
+  const loadListings = useCallback(async (bustCache = false) => {
+    setLoading(true);
     try {
+      if (!bustCache) {
+        const cached = sessionStorage.getItem('hbj_cache');
+        if (cached) {
+          const { listings: l, developers: d, profile: p, unitTypes: u, propertyTypes: pt, ts } = JSON.parse(cached);
+          if (Date.now() - ts < 5 * 60 * 1000) {
+            setListings(l); setDevelopers(d); setProfile(p); setUnitTypes(u); setPropertyTypes(pt);
+            setLoading(false);
+            return;
+          }
+        }
+      }
       await seedIfEmpty();
       const [data, devs, currentProfile, types, propertyTypeOptions] = await Promise.all([
-        fetchListings(),
-        fetchDevelopers(),
-        fetchProfile(),
-        fetchUnitTypes(),
-        fetchPropertyTypes(),
+        fetchListings(), fetchDevelopers(), fetchProfile(), fetchUnitTypes(), fetchPropertyTypes(),
       ]);
-      setListings(data);
-      setDevelopers(devs);
-      setProfile(currentProfile);
-      setUnitTypes(types);
-      setPropertyTypes(propertyTypeOptions);
+      setListings(data); setDevelopers(devs); setProfile(currentProfile);
+      setUnitTypes(types); setPropertyTypes(propertyTypeOptions);
+      sessionStorage.setItem('hbj_cache', JSON.stringify({
+        listings: data, developers: devs, profile: currentProfile,
+        unitTypes: types, propertyTypes: propertyTypeOptions, ts: Date.now(),
+      }));
     } catch (e) {
       console.error('Listings error:', e);
       addToast('Failed to load listings.', 'error');
+    } finally {
+      setLoading(false);
     }
   }, [addToast]);
 
@@ -67,6 +79,7 @@ export default function App() {
 
   async function handleLogout() {
     await signOut(auth);
+    sessionStorage.removeItem('hbj_cache');
     setView('public');
   }
 
@@ -84,7 +97,7 @@ export default function App() {
   return (
     <>
       {view === 'public' && (
-        <PublicView listings={listings} developers={developers} profile={profile} onAdminClick={() => setView('login')} addToast={addToast} />
+        <PublicView listings={listings} developers={developers} profile={profile} loading={loading} onAdminClick={() => setView('login')} addToast={addToast} />
       )}
       {view === 'login' && (
         <AdminLogin onLogin={() => setView('admin')} onBack={() => setView('public')} addToast={addToast} />
@@ -98,7 +111,7 @@ export default function App() {
           unitTypes={unitTypes}
           onLogout={handleLogout}
           addToast={addToast}
-          reloadListings={loadListings}
+          reloadListings={() => loadListings(true)}
         />
       )}
       <Toast toasts={toasts} removeToast={removeToast} />

@@ -16,6 +16,36 @@ function ImageWithFallback({ src, alt, type, className, onClick }) {
   return <img src={src} alt={alt} className={className} onClick={onClick} onError={() => setErr(true)} />;
 }
 
+function SkeletonCard() {
+  return (
+    <div className="bg-card/80 border border-white/10 rounded-[28px] overflow-hidden animate-pulse">
+      <div className="aspect-[4/3] bg-white/5" />
+      <div className="p-4 flex flex-col gap-3">
+        <div className="h-4 bg-white/5 rounded-full w-3/4" />
+        <div className="h-3 bg-white/5 rounded-full w-1/2" />
+        <div className="h-5 bg-white/5 rounded-full w-1/3" />
+        <div className="flex gap-3 pt-2 border-t border-white/5">
+          <div className="h-3 bg-white/5 rounded-full w-10" />
+          <div className="h-3 bg-white/5 rounded-full w-10" />
+          <div className="h-3 bg-white/5 rounded-full w-14" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonDevCard() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/5 bg-card/50 animate-pulse w-44">
+      <div className="w-10 h-8 rounded-lg bg-white/5" />
+      <div className="flex flex-col gap-1.5">
+        <div className="h-3 bg-white/5 rounded-full w-20" />
+        <div className="h-2.5 bg-white/5 rounded-full w-14" />
+      </div>
+    </div>
+  );
+}
+
 function PropertyCard({ property, onClick }) {
   return (
     <div onClick={() => onClick(property)}
@@ -271,7 +301,7 @@ function PropertyModal({ property, onClose, addToast }) {
   );
 }
 
-export default function PublicView({ listings, developers, profile, onAdminClick, addToast }) {
+export default function PublicView({ listings, developers, profile, onAdminClick, addToast, loading = false }) {
   const [filters, setFilters] = useState({ type: 'All', location: '', minPrice: '', maxPrice: '' });
   const [selected, setSelected] = useState(null);
   const [activeDev, setActiveDev] = useState(null);
@@ -446,7 +476,13 @@ export default function PublicView({ listings, developers, profile, onAdminClick
               ))}
             </div>
 
-            {listingSection === 'developer' && developers.length > 0 && (
+            {listingSection === 'developer' && loading && (
+              <div className="flex flex-wrap gap-3 mb-6">
+                {Array(3).fill(0).map((_, i) => <SkeletonDevCard key={i} />)}
+              </div>
+            )}
+
+            {listingSection === 'developer' && !loading && developers.length > 0 && (
               <div className="mb-6">
                 <div className="flex flex-wrap gap-3 mb-4">
                   {developers.map(d => {
@@ -493,7 +529,11 @@ export default function PublicView({ listings, developers, profile, onAdminClick
             </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-20 text-muted">
               <Home size={48} className="mx-auto mb-4 opacity-30" />
               <p className="text-lg">No properties match your search.</p>

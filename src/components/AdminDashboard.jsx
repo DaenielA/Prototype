@@ -18,6 +18,18 @@ const EMPTY_DEV_FORM = { name: '', description: '', logo: '' };
 const EMPTY_PROFILE_FORM = { name: '', picture: '', bio: '' };
 
 
+function Tooltip({ text, children }) {
+  return (
+    <div className="relative group/tip">
+      {children}
+      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#0f1117] border border-white/10 text-primary text-[11px] rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50 shadow-lg">
+        {text}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0f1117]" />
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ icon, label, value, color }) {
   const Icon = icon;
   return (
@@ -657,25 +669,28 @@ export default function AdminDashboard({ listings, developers, profile, property
   }
 
   async function handleDelete(id) {
+    setDeleteTarget(null);
     try {
       await deleteListing(id);
       await reloadListings();
       addToast('Property deleted.', 'success');
     } catch {
       addToast('Failed to delete property.', 'error');
-    } finally {
-      setDeleteTarget(null);
+      await reloadListings();
     }
   }
 
   async function toggleVisibility(id) {
     const prop = listings.find(l => l.id === id);
     if (!prop) return;
+    // optimistic update
+    reloadListings.__optimistic?.(id, { visible: !prop.visible });
     try {
       await updateListing(id, { visible: !prop.visible });
       await reloadListings();
     } catch {
       addToast('Failed to update visibility.', 'error');
+      await reloadListings();
     }
   }
 
@@ -927,15 +942,21 @@ export default function AdminDashboard({ listings, developers, profile, property
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => { setEditTarget(p); setView('edit'); }} className="text-muted hover:text-gold transition-colors" title="Edit">
-                                <Pencil size={15} />
-                              </button>
-                              <button onClick={() => toggleVisibility(p.id)} className="text-muted hover:text-blue-400 transition-colors" title="Toggle visibility">
-                                {p.visible ? <EyeOff size={15} /> : <Eye size={15} />}
-                              </button>
-                              <button onClick={() => setDeleteTarget(p.id)} className="text-muted hover:text-red-400 transition-colors" title="Delete">
-                                <Trash2 size={15} />
-                              </button>
+                              <Tooltip text="Edit">
+                                <button onClick={() => { setEditTarget(p); setView('edit'); }} className="text-muted hover:text-gold transition-colors">
+                                  <Pencil size={15} />
+                                </button>
+                              </Tooltip>
+                              <Tooltip text={p.visible ? 'Hide' : 'Show'}>
+                                <button onClick={() => toggleVisibility(p.id)} className="text-muted hover:text-blue-400 transition-colors">
+                                  {p.visible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                </button>
+                              </Tooltip>
+                              <Tooltip text="Delete">
+                                <button onClick={() => setDeleteTarget(p.id)} className="text-muted hover:text-red-400 transition-colors">
+                                  <Trash2 size={15} />
+                                </button>
+                              </Tooltip>
                             </div>
                           </td>
                         </tr>
@@ -995,8 +1016,12 @@ export default function AdminDashboard({ listings, developers, profile, property
                           <td className="px-4 py-3 text-gold">{listings.filter(l => l.developerId === d.id).length}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => { setDevEditTarget(d); setView('editDev'); }} className="text-muted hover:text-gold transition-colors"><Pencil size={15} /></button>
-                              <button onClick={() => setDevDeleteTarget(d.id)} className="text-muted hover:text-red-400 transition-colors"><Trash2 size={15} /></button>
+                              <Tooltip text="Edit">
+                                <button onClick={() => { setDevEditTarget(d); setView('editDev'); }} className="text-muted hover:text-gold transition-colors"><Pencil size={15} /></button>
+                              </Tooltip>
+                              <Tooltip text="Delete">
+                                <button onClick={() => setDevDeleteTarget(d.id)} className="text-muted hover:text-red-400 transition-colors"><Trash2 size={15} /></button>
+                              </Tooltip>
                             </div>
                           </td>
                         </tr>
